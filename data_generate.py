@@ -1,9 +1,13 @@
 import random
 import faker
-from fuzzywuzzy import fuzz
 import pandas as pd
-from enum import Enum
 from itertools import product
+import json
+import csv
+import gender_guesser.detector as gender
+from prettytable import PrettyTable
+from enum import Enum
+from rapidfuzz import fuzz
 
 
 class NamePart(Enum):
@@ -12,45 +16,53 @@ class NamePart(Enum):
     MIDDLE = "middlename"
 
 
+class Language(Enum):
+    RUS = 'ru_RU',
+    ENG = 'en_US'
+
+
 class DataGenerator:
     """Инициализация генератора фиктивных данных"""
     def __init__(self,
-                 languages=None,
+                 language=Language.RUS,
                  double_letter_prob=0.4,
                  change_letter_prob=0.5,
                  change_name_prob=0.1,
                  change_name_domain_prob=0.3,
                  double_number_prob=0.3
                  ):
-        if languages is None:
-            languages = ['ru_RU']
-        self.languages = languages
-        self.fake = faker.Faker(self.languages[0])
+        self.language = language
+        self.fake = faker.Faker(self.language.value)
         self.double_letter_prob = double_letter_prob
         self.change_letter_prob = change_letter_prob
         self.change_name_prob = change_name_prob
         self.change_name_domain_prob = change_name_domain_prob  # вероятность изменить и имя и домен
         self.double_number_probability = double_number_prob
+        self.gender_detector = gender.Detector()
 
     def doubling_letter(self, name, probability=0.5):
         if len(name) < 2:
             return name
-        name_as_list = list(name)
-        index_to_double = random.randint(0, len(name_as_list) - 1)
-        name_as_list.insert(index_to_double, random.choice(list(name)))
-        return ''.join(name_as_list)
+        index_to_double = random.randint(0, len(name) - 1)
+        return name[:index_to_double] + name[index_to_double] + name[index_to_double:]
 
-    def changing_letter(self, name, probability=0.5):
+    def changing_letter_rus(self, name, probability=0.5):
         if len(name) < 2:
             return name
-        name_as_list = list(name)
-        index_to_change = random.randint(1, len(name_as_list) - 1)
-        name_as_list[index_to_change] = random.choice(list(name))
-        return ''.join(name_as_list)
+        index_to_change = random.randint(1, len(name) - 1)
+        new_letter = random.choice([c for c in 'абвгдежзиклмнопрстуфхцчшщэюя' if c != name[index_to_change]])
+        return name[:index_to_change] + new_letter + name[index_to_change + 1:]
+
+    def changing_letter_eng(self, name):
+        if len(name) < 2:
+            return name
+        index_to_change = random.randint(1, len(name) - 1)
+        new_letter = random.choice([c for c in 'abcdefghijklmnopqrstuvwxyz' if c != name[index_to_change]])
+        return name[:index_to_change] + new_letter + name[index_to_change + 1:]
 
     """Создание вариации номера телефона"""
     def vary_phone_number(self, phone):
-        # не доделано - не принимает флаг изменения человека (ф\и\о, как в почте)
+        # todo: принимать флаг изменения человека (ф\и\о, как в почте)
         phone_as_list = list(phone)
 
         # Изменяем одну случайную цифру в номере телефона
@@ -76,9 +88,9 @@ class DataGenerator:
         if random_number < self.double_letter_prob:
             return f"{self.doubling_letter(name)}@{domain}"
         if random_number < self.double_letter_prob + self.change_letter_prob:
-            return f"{self.changing_letter(name)}@{domain}"
+            return f"{self.changing_letter_eng(name)}@{domain}"
         if random_number < self.double_letter_prob + self.change_letter_prob + self.change_name_domain_prob:
-            return f"{self.changing_letter(name)}@{self.changing_letter(domain)}"
+            return f"{self.changing_letter_eng(name)}@{self.changing_letter_eng(domain)}"
         # Добавляем случайное число к имени пользователя    # name += str(random.randint(10, 99))
         return f"{name}@{domain}"
 
@@ -92,37 +104,47 @@ class DataGenerator:
         if random_number < self.double_letter_prob:
             return self.doubling_letter(name), flag_change_full_name
         elif random_number < self.double_letter_prob + self.change_letter_prob:
-            return self.changing_letter(name), flag_change_full_name
+            if self.language == Language.RUS:
+                return self.changing_letter_rus(name), flag_change_full_name
+            else:
+                return self.changing_letter_eng(name), flag_change_full_name
         elif random_number < self.double_letter_prob + self.change_letter_prob + self.change_name_prob:
             flag_change_full_name = True
             # Меняем Ф\И\О целиком
             if part == NamePart.FIRST:
-                return self.fake.first_name(), flag_change_full_name
+                return self.fake.first_name_male() if gender =='male' else self.fake.first_name_female(), flag_change_full_name
             if part == NamePart.LAST:
-                return self.fake.last_name(), flag_change_full_name
+                return self.fake.last_name_male() if gender == 'male' else self.fake.last_name_female(), flag_change_full_name
             if part == NamePart.MIDDLE:
-                return self.fake.middle_name(), flag_change_full_name
+                return self.fake.middle_name_male() if gender == 'male' else self.fake.middle_name_female(), flag_change_full_name
 
         if random.choice([True, False]):
-            return name + random.choice(['ий', 'ов', 'ев', 'ский', 'цкий']), flag_change_full_name
+            if self.language == Language.RUS:
+                return name + random.choice(['ий', 'ов', 'ев', 'ский', 'цкий']), flag_change_full_name
+            else:
+                # todo: аналогичная смена окончаний на английском?
+                # либо скип, тк отчества нет. либо другая логика
+                pass
         return name, flag_change_full_name
 
     """Генерация списка клиентов"""
     def generate_clients_list(self, num_clients):
         clients_list = []
         for _ in range(num_clients):
-            name = self.fake.first_name()
-            surname = self.fake.last_name()
-            patronymic = self.fake.middle_name()
-            # phone = fake.phone_number()
+            gender = random.choice(['м', 'ж'])
+            name = self.fake.first_name_male() if gender == 'м' else self.fake.first_name_female()
+            surname = self.fake.last_name_male() if gender == 'м' else self.fake.last_name_female()
+            patronymic = self.fake.middle_name_male() if gender == 'м' else self.fake.middle_name_female()
             email = self.fake.email()
+            # phone = fake.phone_number()
             # address = fake.address().replace('\n', ', ')
             clients_list.append({
                 'Фамилия': surname,
                 'Имя': name,
                 'Отчество': patronymic,
-                # 'Номер телефона': phone,
                 'Адрес почты': email,
+                'Пол': gender
+                # 'Номер телефона': phone,
                 # 'Адрес': address
             })
         return clients_list
@@ -153,6 +175,9 @@ class DataGenerator:
                 average_similarity = (name_similarity + email_similarity) / 2  # phone_similarity
 
                 # Если среднее сходство выше порога, добавляем в результаты
+                # todo: управляемое среднее взвешенное для столбцов?
+                # todo: изначально определять какие есть столбцы и предлагать установить коэфф?
+
                 if average_similarity > 85:
                     table_matched_clients.append({
                         'Запись 1': [full_name1, email1],
@@ -166,11 +191,50 @@ class DataGenerator:
         consolidated_clients = returned_clients + remaining_customers_1 + remaining_customers_2
         return table_matched_clients, consolidated_clients
 
+    def save_to_json(self, data, filename):
+        """Сохраняет данные в JSON-файл"""
+        with open(filename, 'w', encoding='utf-8') as json_file:
+            json.dump(data, json_file, ensure_ascii=False, indent=4)
+
+    def save_to_csv(self, data, filename):
+        """Сохраняет данные в CSV-файл"""
+        keys = data[0].keys()
+        with open(filename, 'w', newline='', encoding='utf-8') as output_file:
+            dict_writer = csv.DictWriter(output_file, fieldnames=keys)
+            dict_writer.writeheader()
+            dict_writer.writerows(data)
+
+    def load_from_json(self, filename):
+        """Загружает данные из JSON-файла"""
+        with open(filename, 'r', encoding='utf-8') as input_file:
+            return json.load(input_file)
+
+    def load_from_csv(self, filename):
+        """Загружает данные из CSV-файла"""
+        with open(filename, 'r', newline='', encoding='utf-8') as input_file:
+            reader = csv.DictReader(input_file)
+            return [row for row in reader]
+
+def print_table(data):
+    """Выводит данные в виде форматированной таблицы"""
+    if not data:
+        print("Нет данных для отображения")
+        return
+
+    table = PrettyTable()
+    table.field_names = data[0].keys()
+    for row in data:
+        table.add_row(row.values())
+
+    table.align = 'l'
+    print(table)
+
+
 if __name__ == "__main__":
-    data = DataGenerator(["ru_RU"])
+    data = DataGenerator()
 
     # Создание основного списка клиентов
-    clients_list_original = data.generate_clients_list(100)
+    clients_list_original = data.generate_clients_list(1000)
 
     # Копирование списка и внесение случайных изменений для создания второго списка
     clients_list_variant = [client.copy() for client in clients_list_original]
@@ -202,12 +266,14 @@ if __name__ == "__main__":
     # Вывод первых пяти клиентов из каждого списка для проверки
     print('Первые пять клиентов из оригинального списка:')
 
-    df_clients_original = pd.DataFrame(clients_list_original)
-    print(df_clients_original.head(5))
+    # df_clients_original = pd.DataFrame(clients_list_original)
+    # print(df_clients_original.head(5))
+    print_table(clients_list_original[:3])
 
     print('\nПервые пять клиентов из похожего списка:')
-    df_clients_variant = pd.DataFrame(clients_list_variant)
-    print(df_clients_variant.head(5))
+    # df_clients_variant = pd.DataFrame(clients_list_variant)
+    # print(df_clients_variant.head(5))
+    print_table(clients_list_variant[:3])
 
     print()
 
@@ -232,4 +298,5 @@ if __name__ == "__main__":
     pd.set_option('display.max_colwidth', 40)
     print(df_consolidated_data.head(3))
     print('\t\t\t\t.............................')
+    pd.set_option('display.max_colwidth', 40)
     print(df_consolidated_data.tail(3))
