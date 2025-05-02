@@ -1,3 +1,5 @@
+import cProfile
+import pstats
 import random
 import faker
 import pandas as pd
@@ -8,36 +10,55 @@ import gender_guesser.detector as gender
 from prettytable import PrettyTable
 from enum import Enum
 from rapidfuzz import fuzz
+from collections import defaultdict
+from rapidfuzz.distance import Levenshtein
 
 
 class NamePart(Enum):
-    FIRST = "name"
-    LAST = "lastname"
-    MIDDLE = "middlename"
+    FIRST = 'name'
+    LAST = 'lastname'
+    MIDDLE = 'middlename'
 
 
 class Language(Enum):
     RUS = 'ru_RU',
     ENG = 'en_US'
 
+_probabilities = {
+    'double_letter_prob' : 0.4,
+    'change_letter_prob' : 0.5,
+    'change_name_prob' : 0.1,
+    'change_name_domain_prob' : 0.3,
+    'double_number_prob' : 0.3,
+    'threshold' : 85
+}
+
+
 
 class DataGenerator:
     """Инициализация генератора фиктивных данных"""
     def __init__(self,
                  language=Language.RUS,
-                 double_letter_prob=0.4,
-                 change_letter_prob=0.5,
-                 change_name_prob=0.1,
-                 change_name_domain_prob=0.3,
-                 double_number_prob=0.3
+                 probabilities=None
                  ):
         self.language = language
         self.fake = faker.Faker(self.language.value)
-        self.double_letter_prob = double_letter_prob
-        self.change_letter_prob = change_letter_prob
-        self.change_name_prob = change_name_prob
-        self.change_name_domain_prob = change_name_domain_prob  # вероятность изменить и имя и домен
-        self.double_number_probability = double_number_prob
+
+        self.probabilities = probabilities or {
+            'double_letter_prob': 0.4,
+            'change_letter_prob': 0.5,
+            'change_name_prob': 0.1,
+            'change_name_domain_prob': 0.3,
+            'double_number_prob': 0.3,
+            'threshold': 85
+        }
+        self.double_letter_prob = self.probabilities['double_letter_prob']
+        self.change_letter_prob = self.probabilities['change_letter_prob']
+        self.change_name_prob = self.probabilities['change_name_prob']
+        self.change_name_domain_prob = self.probabilities['change_name_domain_prob']
+        self.double_number_probability = self.probabilities['double_number_prob']
+        self.threshold = self.probabilities['threshold']
+
         self.gender_detector = gender.Detector()
 
     def doubling_letter(self, name, probability=0.5):
@@ -149,47 +170,70 @@ class DataGenerator:
             })
         return clients_list
 
+
     """Функция для сопоставления клиентов из двух списков"""
     def match_clients(self, list1, list2):
-        remaining_customers_1, remaining_customers_2 = list1.copy(), list2.copy()
-        table_matched_clients = []
-        returned_clients = []
-        for client1 in list1:
-            # Собираем данные для сопоставления
-            full_name1 = f"{client1['Фамилия']} {client1['Имя']} {client1['Отчество']}"
-            email1 = client1['Адрес почты']
-            # phone1 = client1['Номер телефона']
+        # Группировка по первой букве фамилии
+        def group_by_surname_initial(clients):
+            groups = defaultdict(list)
+            for client in clients:
+                surname = client.get('Фамилия', '')
+                if surname:
+                    prefix = surname[0].upper()
+                    groups[prefix].append(client)
+            return groups
 
-            # Сопоставляем каждое поле и считаем среднее значение совпадения
-            for client2 in list2:
-                full_name2 = f"{client2['Фамилия']} {client2['Имя']} {client2['Отчество']}"
-                email2 = client2['Адрес почты']
-                # phone2 = client2['Номер телефона']
+        groups1 = group_by_surname_initial(list1)
+        groups2 = group_by_surname_initial(list2)
 
-                # Вычисляем сходство для каждого поля
-                name_similarity = fuzz.token_sort_ratio(full_name1, full_name2)
-                email_similarity = fuzz.token_sort_ratio(email1, email2)
-                # phone_similarity = fuzz.token_sort_ratio(phone1, phone2)
+        matched_clients = []
+        consolidated_clients = []
+        matched_emails_1 = set()
+        matched_emails_2 = set()
 
-                # Считаем среднее значение совпадения
-                average_similarity = (name_similarity + email_similarity) / 2  # phone_similarity
+        for prefix in groups1:
+            group1 = groups1[prefix]
+            group2 = groups2.get(prefix, [])
 
-                # Если среднее сходство выше порога, добавляем в результаты
-                # todo: управляемое среднее взвешенное для столбцов?
-                # todo: изначально определять какие есть столбцы и предлагать установить коэфф?
+            for client1 in group1:
+                email1 = client1['Адрес почты']
+                if email1 in matched_emails_1:
+                    continue
 
-                if average_similarity > 85:
-                    table_matched_clients.append({
-                        'Запись 1': [full_name1, email1],
-                        'Запись 2': [full_name2, email2],
-                        'Совпадение': [name_similarity, email_similarity]  # phone_similarity
-                    })
-                    returned_clients.append(client1)
-                    remaining_customers_1.remove(client1)
-                    remaining_customers_2.remove(client2)
-                    break
-        consolidated_clients = returned_clients + remaining_customers_1 + remaining_customers_2
-        return table_matched_clients, consolidated_clients
+                full_name1 = f"{client1['Фамилия']} {client1['Имя']} {client1['Отчество']}"
+                email1 = client1['Адрес почты']
+
+                for client2 in group2:
+                    email2 = client2['Адрес почты']
+                    if email2 in matched_emails_2:
+                        continue
+
+                    full_name2 = f"{client2['Фамилия']} {client2['Имя']} {client2['Отчество']}"
+                    email2 = client2['Адрес почты']
+
+                    # todo: мапить объект данных вне завиcимости от кол-ва полей, избавиться от хардкода
+                    name_similarity = fuzz.token_sort_ratio(full_name1, full_name2)
+                    email_similarity = fuzz.token_sort_ratio(email1, email2)
+                    average_similarity = (name_similarity + email_similarity) / 2
+
+                    if average_similarity >= self.threshold:
+                        matched_clients.append({
+                            'Запись 1': [full_name1, email1],
+                            'Запись 2': [full_name2, email2],
+                            'Совпадение': [average_similarity]
+                        })
+                        matched_emails_1.add(email1)
+                        matched_emails_2.add(email2)
+
+                        consolidated_clients.append(select_cleaner_client(client1, client2))
+                        break
+
+        # Добавляем оставшиеся уникальные записи
+        unmatched_clients_1 = [client for client in list1 if client['Адрес почты'] not in matched_emails_1]
+        unmatched_clients_2 = [client for client in list2 if client['Адрес почты'] not in matched_emails_2]
+        consolidated_clients.extend(unmatched_clients_1 + unmatched_clients_2)
+
+        return matched_clients, consolidated_clients
 
     def save_to_json(self, data, filename):
         """Сохраняет данные в JSON-файл"""
@@ -230,8 +274,28 @@ def print_table(data):
     print(table)
 
 
+def select_cleaner_client(client1, client2):
+    """
+    Выбирает более "чистого" клиента, сравнивая нормализованное расстояние Левенштейна
+    между ФИО и email каждого клиента.
+    """
+    def compute_score(client):
+        # todo: аналогично на другие возможные параметры, без хардкода
+        full_name = f"{client['Фамилия']} {client['Имя']} {client['Отчество']}"
+        email = client['Адрес почты']
+        name_distance = Levenshtein.normalized_distance(full_name, "")
+        email_distance = Levenshtein.normalized_distance(email, "")
+        return (name_distance + email_distance) / 2
+
+    score1 = compute_score(client1)
+    score2 = compute_score(client2)
+
+    return client1 if score1 <= score2 else client2
+
 if __name__ == "__main__":
-    data = DataGenerator()
+    profiler = cProfile.Profile() # profiler
+
+    data = DataGenerator(probabilities=_probabilities)
 
     # Создание основного списка клиентов
     clients_list_original = data.generate_clients_list(1000)
@@ -277,14 +341,18 @@ if __name__ == "__main__":
 
     print()
 
+    profiler.enable()
     # Сопоставление клиентов
     matches, consolidated_data = data.match_clients(clients_list_original, clients_list_variant)
+
+    profiler.disable()
+    profiler.dump_stats("profile_data.prof")
 
     c = 0
     for match in matches:
         print(70 * '_')
         print(
-            f"{' '.join(match['Запись 1']):<61} | 1.00\n{' '.join(match['Запись 2']):<61} | {sum(match['Совпадение']) / (100 * len(match['Совпадение'])):.2f}")
+            f"{' '.join(match['Запись 1']):<61} | 1.00\n{' '.join(match['Запись 2']):<61} | {(match['Совпадение'][0]/100):.2f}")
         c += 1
         if c > 5:
             break
@@ -293,10 +361,16 @@ if __name__ == "__main__":
 
     print(f"\nКонсолидация будет содержать {len(consolidated_data)} записей")
 
-    df_consolidated_data = pd.DataFrame(consolidated_data)
+    df_consolidated_data = pd.DataFrame(consolidated_data).sort_values(by="Фамилия", ascending=True)
 
     pd.set_option('display.max_colwidth', 40)
-    print(df_consolidated_data.head(3))
-    print('\t\t\t\t.............................')
-    pd.set_option('display.max_colwidth', 40)
-    print(df_consolidated_data.tail(3))
+    pd.set_option('display.max_rows', None)
+    print(df_consolidated_data.head(10))
+    print(df_consolidated_data.tail(20))
+
+    # profiler.sort_stats('time')
+    # profiler.sort_stats("cumulative").print_stats()
+
+    stats = pstats.Stats("profile_data.prof")
+    stats.strip_dirs().sort_stats("cumulative").print_stats()
+
