@@ -1,6 +1,8 @@
 import cProfile
 import pstats
 import random
+import re
+
 import faker
 import pandas as pd
 from itertools import product
@@ -25,38 +27,56 @@ class Language(Enum):
     ENG = 'en_US'
 
 _probabilities = {
-    'double_letter_prob' : 0.4,
-    'change_letter_prob' : 0.5,
-    'change_name_prob' : 0.1,
-    'change_name_domain_prob' : 0.3,
-    'double_number_prob' : 0.3,
+    'double_letter' : 0.4,
+    'change_letter' : 0.5,
+    'change_name' : 0.1,
+    'change_name_domain' : 0.3,
+    'double_number' : 0.3,
     'threshold' : 85
 }
 
+_weights = {
+    'name': 0.6,
+    'email': 0.4,
+    'length': 0.01,
+}
 
+_block_field = 'Фамилия'
+
+_group_fields = []
+
+# поля, по которым сортировать записи для первичной обработки ??
+# _sort_fields = []
 
 class DataGenerator:
     """Инициализация генератора фиктивных данных"""
     def __init__(self,
                  language=Language.RUS,
-                 probabilities=None
+                 probabilities=None,
+                 weights=None,
+                 block_field=None,
+                 group_fields=None,
                  ):
         self.language = language
         self.fake = faker.Faker(self.language.value)
 
-        self.probabilities = probabilities or {
-            'double_letter_prob': 0.4,
-            'change_letter_prob': 0.5,
-            'change_name_prob': 0.1,
-            'change_name_domain_prob': 0.3,
-            'double_number_prob': 0.3,
-            'threshold': 85
-        }
-        self.double_letter_prob = self.probabilities['double_letter_prob']
-        self.change_letter_prob = self.probabilities['change_letter_prob']
-        self.change_name_prob = self.probabilities['change_name_prob']
-        self.change_name_domain_prob = self.probabilities['change_name_domain_prob']
-        self.double_number_probability = self.probabilities['double_number_prob']
+        # todo: задание self.keyfields из csv или json
+        # юзер сам определяет по каким полям лучше сделать блокировку (оптимальнее) и какие поля сортировать
+
+        self.block_field = block_field
+        self.group_fields = group_fields
+
+        self.weights = weights # or {} - default value
+        self.name_weight = self.weights['name']
+        self.email_weight = self.weights['email']
+        self.length_weight = self.weights['length']
+
+        self.probabilities = probabilities # or {} - default value
+        self.double_letter_prob = self.probabilities['double_letter']
+        self.change_letter_prob = self.probabilities['change_letter']
+        self.change_name_prob = self.probabilities['change_name']
+        self.change_name_domain_prob = self.probabilities['change_name_domain']
+        self.double_number_probability = self.probabilities['double_number']
         self.threshold = self.probabilities['threshold']
 
         self.gender_detector = gender.Detector()
@@ -90,7 +110,7 @@ class DataGenerator:
         index_to_vary = random.randint(2, len(phone_as_list) - 1)
         phone_as_list[index_to_vary] = str(random.randint(0, 9))
 
-         # вероятность двойной ошибки в номере
+        # вероятность двойной ошибки в номере
         # С некоторой вероятностью изменяем еще одну случайную цифру номера
         if random.random() < self.double_number_probability:
             index_to_vary = random.randint(2, len(phone_as_list) - 1)
@@ -170,30 +190,20 @@ class DataGenerator:
             })
         return clients_list
 
-
     """Функция для сопоставления клиентов из двух списков"""
     def match_clients(self, list1, list2):
-        # Группировка по первой букве фамилии
-        def group_by_surname_initial(clients):
-            groups = defaultdict(list)
-            for client in clients:
-                surname = client.get('Фамилия', '')
-                if surname:
-                    prefix = surname[0].upper()
-                    groups[prefix].append(client)
-            return groups
-
-        groups1 = group_by_surname_initial(list1)
-        groups2 = group_by_surname_initial(list2)
+        blocks1 = block_by_fields(list1, self.block_field, self.group_fields)
+        blocks2 = block_by_fields(list2, self.block_field, self.group_fields)
 
         matched_clients = []
         consolidated_clients = []
         matched_emails_1 = set()
         matched_emails_2 = set()
 
-        for prefix in groups1:
-            group1 = groups1[prefix]
-            group2 = groups2.get(prefix, [])
+        # группировка/матчинг - объединение данных из блоков
+        for prefix in blocks1:
+            group1 = blocks1[prefix]
+            group2 = blocks2.get(prefix, [])
 
             for client1 in group1:
                 email1 = client1['Адрес почты']
@@ -212,20 +222,24 @@ class DataGenerator:
                     email2 = client2['Адрес почты']
 
                     # todo: мапить объект данных вне завиcимости от кол-ва полей, избавиться от хардкода
-                    name_similarity = fuzz.token_sort_ratio(full_name1, full_name2)
-                    email_similarity = fuzz.token_sort_ratio(email1, email2)
-                    average_similarity = (name_similarity + email_similarity) / 2
+                    name_similarity = fuzz.token_sort_ratio(full_name1, full_name2) * self.name_weight
+                    email_similarity = fuzz.token_sort_ratio(email1, email2) * self.email_weight
 
-                    if average_similarity >= self.threshold:
+                    # взвешенная сумма атрибутов
+                    # при увеличении атрибутов нужно ли переходить на средневзвешенное?
+                    similarity = (name_similarity + email_similarity)
+
+                    if similarity >= self.threshold:
                         matched_clients.append({
                             'Запись 1': [full_name1, email1],
                             'Запись 2': [full_name2, email2],
-                            'Совпадение': [average_similarity]
+                            'Совпадение': [similarity]
                         })
                         matched_emails_1.add(email1)
                         matched_emails_2.add(email2)
 
-                        consolidated_clients.append(select_cleaner_client(client1, client2))
+                        cleaner_client = self.select_cleaner_client(client1, client2, client1.keys())
+                        consolidated_clients.append(cleaner_client)
                         break
 
         # Добавляем оставшиеся уникальные записи
@@ -234,6 +248,27 @@ class DataGenerator:
         consolidated_clients.extend(unmatched_clients_1 + unmatched_clients_2)
 
         return matched_clients, consolidated_clients
+
+    def select_cleaner_client(self, client1, client2, key_fields):
+        def cleanliness_score(client):
+            combined = ' '.join(str(client.get(field, '')) for field in key_fields)
+            special_chars = len(re.findall(r'[^a-zA-Zа-яА-Я0-9\s]', combined))
+            length = len(combined)
+            return special_chars + length * self.length_weight
+
+        score1 = cleanliness_score(client1)
+        score2 = cleanliness_score(client2)
+
+        if score1 < score2:
+            return client1
+        elif score2 < score1:
+            return client2
+        else:
+            # Дополнительно используем другие критерии:
+            # Выбор записи с меньшей длиной объединенных полей
+            length1 = sum(len(str(client1.get(field, ''))) for field in key_fields)
+            length2 = sum(len(str(client2.get(field, ''))) for field in key_fields)
+            return client1 if length1 <= length2 else client2
 
     def save_to_json(self, data, filename):
         """Сохраняет данные в JSON-файл"""
@@ -259,6 +294,39 @@ class DataGenerator:
             reader = csv.DictReader(input_file)
             return [row for row in reader]
 
+def sort_data(clients, sort_keys):
+    """Сортирует входные данные, чтобы ускорить блокировку и сопоставление"""
+    return sorted(clients, key=lambda x: tuple(x.get(k, '') for k in sort_keys))
+
+def block_by_fields(clients, block_field, group_fields=None):
+    """
+    Универсальная функция блокировки и группировки записей.
+
+    :param clients: Список словарей с данными клиентов.
+    :param block_field: Название поля для блокировки (например, 'Фамилия').
+    :param group_fields: Список полей для дополнительной группировки внутри блоков (например, ['Имя', 'Отчество']).
+    :return: Словарь блоков с возможной дополнительной группировкой.
+    """
+    if group_fields and group_fields.length > 0:
+        blocks = defaultdict(lambda: defaultdict(list))
+        for client in clients:
+            block_value = client.get(block_field, '')
+            if not block_value:
+                continue
+            block_key = block_value[0].upper()
+            group_key = ' '.join(str(client.get(field, '')).strip() for field in group_fields)
+            blocks[block_key][group_key].append(client)
+    else:
+        blocks = defaultdict(list)
+        for client in clients:
+            block_value = client.get(block_field, '')
+            if not block_value:
+                continue
+            block_key = block_value[0].upper()
+            blocks[block_key].append(client)
+    return blocks
+
+
 def print_table(data):
     """Выводит данные в виде форматированной таблицы"""
     if not data:
@@ -274,28 +342,15 @@ def print_table(data):
     print(table)
 
 
-def select_cleaner_client(client1, client2):
-    """
-    Выбирает более "чистого" клиента, сравнивая нормализованное расстояние Левенштейна
-    между ФИО и email каждого клиента.
-    """
-    def compute_score(client):
-        # todo: аналогично на другие возможные параметры, без хардкода
-        full_name = f"{client['Фамилия']} {client['Имя']} {client['Отчество']}"
-        email = client['Адрес почты']
-        name_distance = Levenshtein.normalized_distance(full_name, "")
-        email_distance = Levenshtein.normalized_distance(email, "")
-        return (name_distance + email_distance) / 2
-
-    score1 = compute_score(client1)
-    score2 = compute_score(client2)
-
-    return client1 if score1 <= score2 else client2
-
 if __name__ == "__main__":
     profiler = cProfile.Profile() # profiler
 
-    data = DataGenerator(probabilities=_probabilities)
+    data = DataGenerator(
+        probabilities=_probabilities,
+        weights=_weights,
+        block_field=_block_field,
+        group_fields=_group_fields
+    )
 
     # Создание основного списка клиентов
     clients_list_original = data.generate_clients_list(1000)
@@ -340,6 +395,9 @@ if __name__ == "__main__":
     print_table(clients_list_variant[:3])
 
     print()
+
+    sorted_list1 = sort_data(clients_list_original, clients_list_original[0].keys())
+    sorted_list2 = sort_data(clients_list_variant, clients_list_original[0].keys())
 
     profiler.enable()
     # Сопоставление клиентов
