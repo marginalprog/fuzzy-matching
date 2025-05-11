@@ -26,32 +26,39 @@ class Language(Enum):
     RUS = 'ru_RU',
     ENG = 'en_US'
 
+
+# Гиперпараметры гд: вероятности ошибок
 _probabilities = {
     'double_letter' : 0.4,
     'change_letter' : 0.5,
     'change_name' : 0.1,
     'change_name_domain' : 0.3,
     'double_number' : 0.3,
+    'suffix_addition': 0.3,
     'threshold' : 85
 }
 
+# Гиперпараметры гд: веса для полей
 _weights = {
     'name': 0.6,
     'email': 0.4,
     'length': 0.01,
 }
 
+# Поле(столбец), по которому нужно делать блокировку
 _block_field = 'Фамилия'
 
+# Поля(столбцы), по которым нужно делать группировку
 _group_fields = []
 
-# поля, по которым сортировать записи для первичной обработки ??
-# _sort_fields = []
+# Поля(столбцы), по которым будет мэтчинг
+_match_fields = ['']
 
 class DataGenerator:
     """Инициализация генератора фиктивных данных"""
     def __init__(self,
                  language=Language.RUS,
+                 match_fields=None,
                  probabilities=None,
                  weights=None,
                  block_field=None,
@@ -77,28 +84,29 @@ class DataGenerator:
         self.change_name_prob = self.probabilities['change_name']
         self.change_name_domain_prob = self.probabilities['change_name_domain']
         self.double_number_probability = self.probabilities['double_number']
+        self.suffix_addition_prob = self.probabilities['suffix_addition']
         self.threshold = self.probabilities['threshold']
 
         self.gender_detector = gender.Detector()
 
-    def doubling_letter(self, name, probability=0.5):
+    def doubling_letter(self, name):
         if len(name) < 2:
             return name
         index_to_double = random.randint(0, len(name) - 1)
         return name[:index_to_double] + name[index_to_double] + name[index_to_double:]
 
-    def changing_letter_rus(self, name, probability=0.5):
+    def changing_letter(self, name, email_flag=False):
         if len(name) < 2:
             return name
         index_to_change = random.randint(1, len(name) - 1)
-        new_letter = random.choice([c for c in 'абвгдежзиклмнопрстуфхцчшщэюя' if c != name[index_to_change]])
-        return name[:index_to_change] + new_letter + name[index_to_change + 1:]
-
-    def changing_letter_eng(self, name):
-        if len(name) < 2:
-            return name
-        index_to_change = random.randint(1, len(name) - 1)
-        new_letter = random.choice([c for c in 'abcdefghijklmnopqrstuvwxyz' if c != name[index_to_change]])
+        new_letter = ''
+        if self.language == Language.ENG or email_flag:
+            new_letter = random.choice([c for c in 'abcdefghijklmnopqrstuvwxyz' if c != name[index_to_change]])
+        elif self.language == Language.RUS:
+            new_letter = random.choice([c for c in 'абвгдежзиклмнопрстуфхцчшщэюя' if c != name[index_to_change]])
+        else:
+            # todo: try-catch для ошибки
+            print(f'Несуществующий язык: {self.language}')
         return name[:index_to_change] + new_letter + name[index_to_change + 1:]
 
     """Создание вариации номера телефона"""
@@ -129,14 +137,14 @@ class DataGenerator:
         if random_number < self.double_letter_prob:
             return f"{self.doubling_letter(name)}@{domain}"
         if random_number < self.double_letter_prob + self.change_letter_prob:
-            return f"{self.changing_letter_eng(name)}@{domain}"
+            return f"{self.changing_letter(name, True)}@{domain}"
         if random_number < self.double_letter_prob + self.change_letter_prob + self.change_name_domain_prob:
-            return f"{self.changing_letter_eng(name)}@{self.changing_letter_eng(domain)}"
+            return f"{self.changing_letter(name, True)}@{self.changing_letter(domain, True)}"
         # Добавляем случайное число к имени пользователя    # name += str(random.randint(10, 99))
         return f"{name}@{domain}"
 
     """Функция для создания небольших различий в именах"""
-    def vary_name(self, name, part: NamePart) -> (str, bool):
+    def vary_name(self, name, part: NamePart, gender='male') -> (str, bool):
         # Определяем вероятность изменения буквы или всего имени
         random_number = random.random()
         flag_change_full_name = False  # Если изменили полностью Ф\И\О, то очевидно почты не могут совпадать
@@ -145,30 +153,28 @@ class DataGenerator:
         if random_number < self.double_letter_prob:
             return self.doubling_letter(name), flag_change_full_name
         elif random_number < self.double_letter_prob + self.change_letter_prob:
-            if self.language == Language.RUS:
-                return self.changing_letter_rus(name), flag_change_full_name
-            else:
-                return self.changing_letter_eng(name), flag_change_full_name
+            return self.changing_letter(name), flag_change_full_name
         elif random_number < self.double_letter_prob + self.change_letter_prob + self.change_name_prob:
             flag_change_full_name = True
             # Меняем Ф\И\О целиком
             if part == NamePart.FIRST:
-                return self.fake.first_name_male() if gender =='male' else self.fake.first_name_female(), flag_change_full_name
+                return self.fake.first_name_male() if gender =='м' else self.fake.first_name_female(), flag_change_full_name
             if part == NamePart.LAST:
-                return self.fake.last_name_male() if gender == 'male' else self.fake.last_name_female(), flag_change_full_name
+                return self.fake.last_name_male() if gender == 'м' else self.fake.last_name_female(), flag_change_full_name
             if part == NamePart.MIDDLE:
-                return self.fake.middle_name_male() if gender == 'male' else self.fake.middle_name_female(), flag_change_full_name
+                return self.fake.middle_name_male() if gender == 'м' else self.fake.middle_name_female(), flag_change_full_name
 
-        if random.choice([True, False]):
+        if random.random() < self.suffix_addition_prob:
             if self.language == Language.RUS:
-                return name + random.choice(['ий', 'ов', 'ев', 'ский', 'цкий']), flag_change_full_name
-            else:
-                # todo: аналогичная смена окончаний на английском?
-                # либо скип, тк отчества нет. либо другая логика
-                pass
+                russian_suffixes = ['ов', 'ев', 'ин', 'ский', 'цкий']
+                return name + random.choice(russian_suffixes), flag_change_full_name
+            elif self.language == Language.ENG:
+                english_suffixes = ['son', 'man', 'er', 'ley', 'ton', 'ford', 'field', 'wood']
+                return name + random.choice(english_suffixes), flag_change_full_name
         return name, flag_change_full_name
 
     """Генерация списка клиентов"""
+    # todo:  добавить выбор генерации номера телефона и работы с его полями
     def generate_clients_list(self, num_clients):
         clients_list = []
         for _ in range(num_clients):
@@ -191,7 +197,7 @@ class DataGenerator:
         return clients_list
 
     """Функция для сопоставления клиентов из двух списков"""
-    def match_clients(self, list1, list2):
+    def match_clients(self, list1, list2) -> (list, list):
         blocks1 = block_by_fields(list1, self.block_field, self.group_fields)
         blocks2 = block_by_fields(list2, self.block_field, self.group_fields)
 
@@ -221,13 +227,16 @@ class DataGenerator:
                     full_name2 = f"{client2['Фамилия']} {client2['Имя']} {client2['Отчество']}"
                     email2 = client2['Адрес почты']
 
-                    # todo: мапить объект данных вне завиcимости от кол-ва полей, избавиться от хардкода
-                    name_similarity = fuzz.token_sort_ratio(full_name1, full_name2) * self.name_weight
-                    email_similarity = fuzz.token_sort_ratio(email1, email2) * self.email_weight
+                    values = {
+                        'name': fuzz.token_sort_ratio(full_name1, full_name2),
+                        'email': fuzz.token_sort_ratio(email1, email2),
+                    }
 
-                    # взвешенная сумма атрибутов
-                    # при увеличении атрибутов нужно ли переходить на средневзвешенное?
-                    similarity = (name_similarity + email_similarity)
+                    total_weight = sum(self.weights.values())
+                    weighted_sum = sum(values[key] * self.weights[key] for key in values if key in self.weights)
+
+                    # средневзвешенная сумма атрибутов
+                    similarity = weighted_sum / total_weight if total_weight else 0
 
                     if similarity >= self.threshold:
                         matched_clients.append({
@@ -298,6 +307,11 @@ def sort_data(clients, sort_keys):
     """Сортирует входные данные, чтобы ускорить блокировку и сопоставление"""
     return sorted(clients, key=lambda x: tuple(x.get(k, '') for k in sort_keys))
 
+def weighted_average(values, weights):
+    total_weight = sum(weights.values())
+    weighted_sum = sum(values[key] * weights[key] for key in values if key in weights)
+    return weighted_sum / total_weight if total_weight else 0
+
 def block_by_fields(clients, block_field, group_fields=None):
     """
     Универсальная функция блокировки и группировки записей.
@@ -346,6 +360,7 @@ if __name__ == "__main__":
     profiler = cProfile.Profile() # profiler
 
     data = DataGenerator(
+        match_fields=_match_fields, # todo
         probabilities=_probabilities,
         weights=_weights,
         block_field=_block_field,
@@ -355,18 +370,19 @@ if __name__ == "__main__":
     # Создание основного списка клиентов
     clients_list_original = data.generate_clients_list(1000)
 
+    # todo: универсальный парсинг по полям без привязки к названиям столбцов
     # Копирование списка и внесение случайных изменений для создания второго списка
     clients_list_variant = [client.copy() for client in clients_list_original]
     name_changed_list = []  # Список, содержащий инф-ю об изменении Ф\И\О
     for client in clients_list_variant:
         if random.choice([True, False]):
-            client['Имя'], flag_name_changed = data.vary_name(client['Имя'], NamePart.FIRST)
+            client['Имя'], flag_name_changed = data.vary_name(client['Имя'], NamePart.FIRST, client['Пол'])
             name_changed_list.append(flag_name_changed)
         if random.choice([True, False]):
-            client['Фамилия'], flag_name_changed = data.vary_name(client['Фамилия'], NamePart.LAST)
+            client['Фамилия'], flag_name_changed = data.vary_name(client['Фамилия'], NamePart.LAST, client['Пол'])
             name_changed_list.append(flag_name_changed)
         if random.choice([True, False]):
-            client['Отчество'], flag_name_changed = data.vary_name(client['Отчество'], NamePart.MIDDLE)
+            client['Отчество'], flag_name_changed = data.vary_name(client['Отчество'], NamePart.MIDDLE, client['Пол'])
             name_changed_list.append(flag_name_changed)
         # if random.choice([True, False]) or (True in name_changed_list):  # Или 0.5 вероятность для изменения или 100% меняем
         #     client['Номер телефона'] = vary_phone_number(client['Номер телефона'])
@@ -379,19 +395,14 @@ if __name__ == "__main__":
         flag_name_changed = False  # Обновляем флаг изменения имени
         name_changed_list.clear()  # Обновляем список состояний Ф\И\О
 
-    # print(f"{len(clients_list_original)=}")
-    # print(f"{len(clients_list_variant)=}")
 
     # Вывод первых пяти клиентов из каждого списка для проверки
     print('Первые пять клиентов из оригинального списка:')
 
-    # df_clients_original = pd.DataFrame(clients_list_original)
-    # print(df_clients_original.head(5))
     print_table(clients_list_original[:3])
 
     print('\nПервые пять клиентов из похожего списка:')
-    # df_clients_variant = pd.DataFrame(clients_list_variant)
-    # print(df_clients_variant.head(5))
+
     print_table(clients_list_variant[:3])
 
     print()
