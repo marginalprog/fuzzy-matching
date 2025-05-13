@@ -15,6 +15,14 @@ class Language(Enum):
 class DataGenerator:
     """
     Генерирует фиктивные данные с возможными искажениями (ошибками) в фамилии, имени, отчестве, email и телефоне.
+    
+    Основные функции:
+    - Генерация чистых данных с помощью библиотеки Faker
+    - Внесение различных искажений в данные (дублирование букв, замена букв и т.д.)
+    - Создание пар данных для тестирования алгоритмов сопоставления
+    - Сохранение сгенерированных данных в форматах JSON и CSV
+    
+    Параметры искажений контролируются через словарь вероятностей.
     """
     DEFAULT_PROBABILITIES = {
         'double_letter': 0.4,       # вероятность дублирования буквы
@@ -38,6 +46,12 @@ class DataGenerator:
                  language=Language.RUS,
                  probabilities=None,
                  ):
+        """
+        Инициализирует генератор данных.
+        
+        :param language: язык генерируемых данных (Language.RUS или Language.ENG)
+        :param probabilities: словарь вероятностей различных искажений
+        """
         self.language = language
         self.fake = faker.Faker(self.language.value)
 
@@ -53,14 +67,25 @@ class DataGenerator:
         self.gender_detector = gender.Detector()
 
     def doubling_letter(self, text):
-        """Дублирует случайную букву в строке."""
+        """
+        Дублирует случайную букву в строке.
+        
+        :param text: исходный текст
+        :return: текст с дублированной случайной буквой
+        """
         if len(text) < 2:
             return text
         idx = random.randint(0, len(text) - 1)
         return text[:idx] + text[idx] + text[idx:]
 
     def changing_letter(self, text, email_flag=False):
-        """Заменяет случайную букву на другую (для email используется латиница)."""
+        """
+        Заменяет случайную букву на другую.
+        
+        :param text: исходный текст
+        :param email_flag: флаг для замены буквы в email (используется латиница)
+        :return: текст с замененной случайной буквой
+        """
         if len(text) < 2:
             return text
         idx = random.randint(1, len(text) - 1)
@@ -85,8 +110,8 @@ class DataGenerator:
             return phone
 
         if new_person:
-            # Если ФИО было полностью изменено, генерируем новый телефон
-            return self.fake.email()
+            # Если ФИО было полностью изменено, генерируем новый номер телефона
+            return self.fake.phone_number()
 
         # Изменяем одну случайную цифру в номере телефона
         idx = random.randint(0, len(digits) - 1)
@@ -125,15 +150,14 @@ class DataGenerator:
         # Без изменений
         return email
 
-    """Функция для создания небольших различий в именах"""
     def vary_name(self, name, part, gender='male') -> (str, bool):
         """
-        Вносит искажения в одно из слов ФИО (имя, фамилию или отчество):
-        - дублирует букву,
-        — заменяет букву,
-        — полностью меняет на другое (через Faker),
-        — добавляет суффикс.
-        Возвращает (new_name, full_change_flag).
+        Вносит искажения в одно из слов ФИО (имя, фамилию или отчество).
+        
+        :param name: исходное имя
+        :param part: часть ФИО ('first' - имя, 'last' - фамилия, 'middle' - отчество)
+        :param gender: пол ('м' или 'ж')
+        :return: кортеж (измененное имя, флаг полной замены имени)
         """
         # Определяем вероятность изменения буквы или всего имени
         rnd = random.random()
@@ -198,6 +222,10 @@ class DataGenerator:
     def apply_distortions(self, clients, fields=None):
         """
         Применяет искажения к списку клиентов.
+        
+        :param clients: исходный список клиентов
+        :param fields: список полей, к которым будут применены искажения
+        :return: искаженный список клиентов
         """
         if fields is None:
             fields = list(self.FIELD_NAMES.values())
@@ -231,16 +259,32 @@ class DataGenerator:
     def generate_clients_pair(self, num_clients, fields=None):
         """
         Генерирует пару списков клиентов: оригинальный и искаженный.
+        
+        :param num_clients: количество клиентов для генерации
+        :param fields: список полей для генерации
+        :return: кортеж (список оригинальных клиентов, список искаженных клиентов)
         """
         clean_clients = self.generate_clean_clients_list(num_clients, fields)
         distorted_clients = self.apply_distortions(clean_clients, fields)
         return clean_clients, distorted_clients
 
     def save_to_json(self, data, filename):
+        """
+        Сохраняет данные в JSON-файл.
+        
+        :param data: данные для сохранения
+        :param filename: имя файла для сохранения
+        """
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
     def save_to_csv(self, data, filename):
+        """
+        Сохраняет данные в CSV-файл.
+        
+        :param data: данные для сохранения
+        :param filename: имя файла для сохранения
+        """
         if not data:
             return
         with open(filename, 'w', newline='', encoding='utf-8') as f:

@@ -10,6 +10,14 @@ from match_config_classes import MatchConfig, MatchFieldConfig
 
 
 def generate_test_data(probabilities, gen_fields, count=100):
+    """
+    Генерирует тестовые данные клиентов: оригинальный и искаженный списки.
+    
+    :param probabilities: словарь вероятностей различных искажений
+    :param gen_fields: список полей для генерации
+    :param count: количество клиентов для генерации (по умолчанию 100)
+    :return: кортеж (список оригинальных клиентов, список искаженных клиентов)
+    """
     dg = DataGenerator(probabilities=probabilities)
     original_list, variant_list = dg.generate_clients_pair(count, fields=gen_fields)
     return original_list, variant_list
@@ -17,6 +25,15 @@ def generate_test_data(probabilities, gen_fields, count=100):
 
 # todo: in/out json/csv на выбор?
 def generate_and_save_test_data(probabilities, gen_fields, count=100, file_format='json'):
+    """
+    Генерирует тестовые данные клиентов и сохраняет их в файлы.
+    
+    :param probabilities: словарь вероятностей различных искажений
+    :param gen_fields: список полей для генерации
+    :param count: количество клиентов для генерации (по умолчанию 100)
+    :param file_format: формат файлов для сохранения ('json' или 'csv')
+    :return: кортеж (список оригинальных клиентов, список искаженных клиентов)
+    """
     dg = DataGenerator(probabilities=probabilities)
     original_list, variant_list = dg.generate_clients_pair(count, fields=gen_fields)
 
@@ -33,6 +50,13 @@ def generate_and_save_test_data(probabilities, gen_fields, count=100, file_forma
 
 
 def display_sample_data(original_list, variant_list, rows_count=5):
+    """
+    Выводит образцы данных из обоих списков клиентов в виде таблицы.
+    
+    :param original_list: список оригинальных клиентов
+    :param variant_list: список искаженных клиентов
+    :param rows_count: количество строк для отображения (по умолчанию 5)
+    """
     print(f'Первые {rows_count} клиентов из оригинального списка:')
     print_table(original_list[:rows_count])
     print(f'\nПервые {rows_count} клиентов из искаженного списка:')
@@ -41,10 +65,14 @@ def display_sample_data(original_list, variant_list, rows_count=5):
 
 
 def run_matching(original_list, variant_list, config: MatchConfig):
-    match_fields = [f.field for f in config.fields]
-    weights = {f.field: f.weight for f in config.fields}
-    weights['length'] = config.length_weight
-
+    """
+    Запускает процесс сопоставления и консолидации данных.
+    
+    :param original_list: список оригинальных клиентов
+    :param variant_list: список искаженных клиентов
+    :param config: конфигурация для сопоставления (экземпляр MatchConfig)
+    :return: кортеж (экземпляр DataMatcher, список совпадений, список консолидированных записей)
+    """
     matcher = DataMatcher(config=config)
     matches, consolidated = matcher.match_and_consolidate(original_list, variant_list)
     return matcher, matches, consolidated
@@ -53,6 +81,9 @@ def run_matching(original_list, variant_list, config: MatchConfig):
 def display_matches(matches, limit=5):
     """
     Выводит результаты совпадений в виде таблицы PrettyTable.
+    
+    :param matches: список найденных совпадений
+    :param limit: максимальное количество строк для отображения (по умолчанию 5)
     """
     # Создаем таблицу и задаем заголовки колонок
     table = PrettyTable()
@@ -82,6 +113,13 @@ def display_matches(matches, limit=5):
 
 
 def display_consolidated(consolidated, sort_field, limit=5):
+    """
+    Выводит консолидированные записи в виде DataFrame pandas.
+    
+    :param consolidated: список консолидированных записей
+    :param sort_field: поле для сортировки результатов
+    :param limit: максимальное количество строк для отображения (по умолчанию 5)
+    """
     df_consolidated = pd.DataFrame(consolidated)
     if sort_field in df_consolidated.columns:
         df_consolidated = df_consolidated.sort_values(by="Фамилия", ascending=True)
@@ -92,7 +130,6 @@ def display_consolidated(consolidated, sort_field, limit=5):
     pd.set_option('display.max_rows', limit)
     print(f"\nКонсолидировано: {len(consolidated)} записей\n")
     print(df_consolidated)
-
 
 
 def print_table(data):
@@ -111,6 +148,14 @@ def print_table(data):
 
 
 def save_results(matcher, matches, consolidated, file_format='json'):
+    """
+    Сохраняет результаты сопоставления и консолидации в файлы.
+    
+    :param matcher: экземпляр DataMatcher
+    :param matches: список найденных совпадений
+    :param consolidated: список консолидированных записей
+    :param file_format: формат файлов для сохранения ('json' или 'csv')
+    """
     matcher.save_matches_to_json(matches, 'matches.json')
     matcher.save_matches_to_csv(matches, 'matches.csv')
     matcher.save_consolidated_to_json(consolidated, 'consolidated.json')

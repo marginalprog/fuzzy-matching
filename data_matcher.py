@@ -13,8 +13,20 @@ class DataMatcher:
     """
     Класс для загрузки данных из CSV/JSON, маппинга полей для матчинга,
     выполнения фаззи-сопоставления (RapidFuzz) и консолидации похожих записей.
+    
+    Основные функции:
+    - Загрузка данных из разных источников
+    - Блокировка данных для эффективного сопоставления
+    - Фаззи-сопоставление полей с учетом весов
+    - Консолидация совпадающих записей
+    - Сохранение результатов в разных форматах
     """
     def __init__(self, config: MatchConfig = None):
+        """
+        Инициализирует экземпляр класса DataMatcher.
+        
+        :param config: объект конфигурации MatchConfig, содержащий настройки для сопоставления
+        """
         # Поля для блокировки (первый символ) и дополнительные поля группировки
         self.block_field = config.block_field
         self.group_fields = config.group_fields or []
@@ -28,10 +40,10 @@ class DataMatcher:
     def load_from_csv(self, filename, name_fields):
         """
         Загружает данные из CSV и мапит колонки в ключи записи согласно field_mapping.
+        
         :param filename: путь к CSV-файлу
-        :param name_fields: dict, где ключ — имя столбца в файле, значение — имя поля в записи
-                              (может быть любым: 'product_name', 'sku', 'price' и т.д.)
-        :return: список dict-записей с произвольными полями
+        :param name_fields: словарь соответствия имен столбцов в файле именам полей в записи
+        :return: список записей в виде словарей
         """
         records = []
         with open(filename, 'r', newline='', encoding='utf-8') as f:
@@ -51,9 +63,10 @@ class DataMatcher:
     def load_from_json(self, filename, name_fields):
         """
         Загружает данные из JSON и мапит ключи из name_fields.
+        
         :param filename: путь к JSON-файлу (список объектов)
-        :param name_fields: dict, где ключ — имя поля в JSON-объекте, значение — имя поля в записи
-        :return: список dict-записей
+        :param name_fields: словарь соответствия имен полей в JSON-объекте именам полей в записи
+        :return: список записей в виде словарей
         """
         with open(filename, 'r', encoding='utf-8') as f:
             raw = json.load(f)
@@ -70,10 +83,22 @@ class DataMatcher:
         return records
 
     def save_matches_to_json(self, matches, filename):
+        """
+        Сохраняет список совпадений в JSON-файл.
+        
+        :param matches: список совпадений для сохранения
+        :param filename: имя файла для сохранения
+        """
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(matches, f, ensure_ascii=False, indent=4)
 
     def save_matches_to_csv(self, matches, filename):
+        """
+        Сохраняет список совпадений в CSV-файл.
+        
+        :param matches: список совпадений для сохранения
+        :param filename: имя файла для сохранения
+        """
         if not matches:
             return
         with open(filename, 'w', newline='', encoding='utf-8') as f:
@@ -88,10 +113,22 @@ class DataMatcher:
                 })
 
     def save_consolidated_to_json(self, consolidated, filename):
+        """
+        Сохраняет список консолидированных записей в JSON-файл.
+        
+        :param consolidated: список консолидированных записей
+        :param filename: имя файла для сохранения
+        """
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(consolidated, f, ensure_ascii=False, indent=4)
 
     def save_consolidated_to_csv(self, consolidated, filename):
+        """
+        Сохраняет список консолидированных записей в CSV-файл.
+        
+        :param consolidated: список консолидированных записей
+        :param filename: имя файла для сохранения
+        """
         if not consolidated:
             return
         with open(filename, 'w', newline='', encoding='utf-8') as f:
@@ -101,11 +138,24 @@ class DataMatcher:
 
     @staticmethod
     def _sort_data(clients, sort_keys):
-        """Сортирует входные данные, чтобы ускорить блокировку и сопоставление"""
+        """
+        Сортирует входные данные по указанным ключам.
+        
+        :param clients: список записей для сортировки
+        :param sort_keys: список ключей для сортировки
+        :return: отсортированный список записей
+        """
         return sorted(clients, key=lambda x: tuple(x.get(k, '') for k in sort_keys))
 
     @staticmethod
     def _weighted_average(values, weights):
+        """
+        Вычисляет взвешенное среднее значение для набора значений.
+        
+        :param values: словарь значений
+        :param weights: словарь весов для каждого значения
+        :return: взвешенное среднее значение
+        """
         total_weight = sum(weights.get(key, 0) for key in values)
         if total_weight == 0:
             return 0
@@ -160,6 +210,13 @@ class DataMatcher:
         return client1 if length1 <= length2 else client2
 
     def match_and_consolidate(self, list1, list2):
+        """
+        Выполняет сопоставление двух списков записей и консолидирует результаты.
+        
+        :param list1: первый список записей для сопоставления
+        :param list2: второй список записей для сопоставления
+        :return: кортеж (список совпадений, список консолидированных записей)
+        """
         if self.sort_before_match:
             list1 = self._sort_data(list1, self.match_fields)
             list2 = self._sort_data(list2, self.match_fields)
