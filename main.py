@@ -16,13 +16,19 @@ def generate_test_data(probabilities, gen_fields, count=100):
 
 
 # todo: in/out json/csv на выбор?
-def generate_and_save_test_data(probabilities, gen_fields, count=100):
+def generate_and_save_test_data(probabilities, gen_fields, count=100, file_format='json'):
     dg = DataGenerator(probabilities=probabilities)
     original_list, variant_list = dg.generate_clients_pair(count, fields=gen_fields)
-    dg.save_to_json(original_list, 'original_data_list1.json')
-    dg.save_to_csv(original_list, 'original_data_list1.csv')
-    dg.save_to_json(variant_list, 'variant_data_list2.json')
-    dg.save_to_csv(variant_list, 'variant_data_list2.csv')
+
+    if file_format == 'json':
+        dg.save_to_json(original_list, 'original_data_list.json')
+        dg.save_to_json(variant_list, 'variant_data_list.json')
+    elif file_format == 'csv':
+        dg.save_to_csv(original_list, 'original_data_list.csv')
+        dg.save_to_csv(variant_list, 'variant_data_list.csv')
+    else:
+        raise ValueError("Неверный формат файла. Выберите '.json' или '.csv'.")
+
     return original_list, variant_list
 
 
@@ -104,37 +110,45 @@ def print_table(data):
     print(table)
 
 
-def save_results(matcher, matches, consolidated):
+def save_results(matcher, matches, consolidated, file_format='json'):
     matcher.save_matches_to_json(matches, 'matches.json')
     matcher.save_matches_to_csv(matches, 'matches.csv')
     matcher.save_consolidated_to_json(consolidated, 'consolidated.json')
     matcher.save_consolidated_to_csv(consolidated, 'consolidated.csv')
 
+    if file_format == 'json':
+        matcher.save_matches_to_json(matches, 'matches.json')
+        matcher.save_consolidated_to_json(consolidated, 'consolidated.json')
+    elif file_format == 'csv':
+        matcher.save_matches_to_csv(matches, 'matches.csv')
+        matcher.save_consolidated_to_csv(consolidated, 'consolidated.csv')
+    else:
+        raise ValueError("Неверный формат вывода файла. Выберите '.json' или '.csv'.")
 
 def main():
-    # # параметры для генерации. Должны совпадать с параметрами для матчинга если тестируется
-    # probabilities = {
-    #     'double_letter': 0.3,       # вероятность дублирования буквы
-    #     'change_letter': 0.2,       # вероятность замены буквы
-    #     'change_name': 0.1,         # вероятность полной замены ФИО
-    #     'change_name_domain': 0.2,  # вероятность изменения домена в email
-    #     'double_number': 0.2,       # вероятность дублирования цифры
-    #     'suffix_addition': 0.3      # вероятность добавления суффикса к ФИО
-    # }
-    # gen_fields = ['Фамилия', 'Имя', 'Отчество', 'email']
-    # num_clients = 1000
-    #
-    # original_list, variant_list = generate_test_data(probabilities, gen_fields, num_clients)
-    # display_sample_data(original_list, variant_list)
-    # #
+    # Параметры для генерации. Должны совпадать с параметрами для матчинга если тестируется
+    probabilities = {
+        'double_letter': 0.3,       # вероятность дублирования буквы
+        'change_letter': 0.2,       # вероятность замены буквы
+        'change_name': 0.1,         # вероятность полной замены ФИО
+        'change_name_domain': 0.2,  # вероятность изменения домена в email
+        'double_number': 0.2,       # вероятность дублирования цифры
+        'suffix_addition': 0.3      # вероятность добавления суффикса к ФИО
+    }
+    gen_fields = ['Фамилия', 'Имя', 'Отчество', 'email']
+    num_clients = 1000
 
-    # параметры для матчинга и консолидации
+    original_list, variant_list = generate_test_data(probabilities, gen_fields, num_clients)
+    display_sample_data(original_list, variant_list)
+    #
+
+    # Параметры для матчинга и консолидации
     match_config = MatchConfig(
         fields=[
-            # MatchFieldConfig(field='Фамилия', weight=0.3),
-            # MatchFieldConfig(field='Имя', weight=0.3),
-            # MatchFieldConfig(field='Отчество', weight=0.2),
-            # MatchFieldConfig(field='email', weight=0.1)
+            MatchFieldConfig(field='Фамилия', weight=0.3),
+            MatchFieldConfig(field='Имя', weight=0.3),
+            MatchFieldConfig(field='Отчество', weight=0.2),
+            MatchFieldConfig(field='email', weight=0.1)
         ],
         length_weight=0.01,
         threshold=0.85,
