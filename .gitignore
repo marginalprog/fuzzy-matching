@@ -1,2 +1,5 @@
 /venv
 /.idea
+__pycache__/
+
+profile_data.prof
