@@ -8,7 +8,7 @@ from enum import Enum
 
 
 class Language(Enum):
-    RUS = 'ru_RU',
+    RUS = 'ru_RU'
     ENG = 'en_US'
 
 

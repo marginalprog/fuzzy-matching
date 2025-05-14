@@ -1,12 +1,22 @@
+#!/usr/bin/env python
+"""
+Точка входа для запуска библиотеки fuzzy_matching.
+Запускает интерактивное меню для выбора примера.
+"""
+
+import sys
+import os
+import argparse
 import cProfile
 import pstats
 import pandas as pd
 import re
 
 from prettytable import PrettyTable
-from data_generator import DataGenerator
+from data_generator import DataGenerator, Language
 from data_matcher import DataMatcher
-from match_config_classes import MatchConfig, MatchFieldConfig
+from match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig
+import transliteration_utils as translit
 
 
 def generate_test_data(probabilities, gen_fields, count=100):
@@ -170,55 +180,319 @@ def save_results(matcher, matches, consolidated, file_format='json'):
     else:
         raise ValueError("Неверный формат вывода файла. Выберите '.json' или '.csv'.")
 
-def main():
-    # Параметры для генерации. Должны совпадать с параметрами для матчинга если тестируется
-    probabilities = {
-        'double_letter': 0.3,       # вероятность дублирования буквы
-        'change_letter': 0.2,       # вероятность замены буквы
-        'change_name': 0.1,         # вероятность полной замены ФИО
-        'change_name_domain': 0.2,  # вероятность изменения домена в email
-        'double_number': 0.2,       # вероятность дублирования цифры
-        'suffix_addition': 0.3      # вероятность добавления суффикса к ФИО
-    }
-    gen_fields = ['Фамилия', 'Имя', 'Отчество', 'email']
-    num_clients = 1000
 
-    original_list, variant_list = generate_test_data(probabilities, gen_fields, num_clients)
-    display_sample_data(original_list, variant_list)
-    #
+def generate_transliteration_test_data():
+    """
+    Генерирует тестовые данные для демонстрации транслитерации.
+    Создает два списка: русский и транслитерированный английский.
+    
+    :return: кортеж (русский список, английский список)
+    """
+    russian_data = [
+        {
+            'id': 'ru_1',
+            'Фамилия': 'Иванов',
+            'Имя': 'Александр',
+            'Отчество': 'Сергеевич',
+            'email': 'ivanov@example.ru'
+        },
+        {
+            'id': 'ru_2',
+            'Фамилия': 'Петров',
+            'Имя': 'Михаил',
+            'Отчество': 'Иванович',
+            'email': 'petrov@example.ru'
+        },
+        {
+            'id': 'ru_3',
+            'Фамилия': 'Сидорова',
+            'Имя': 'Елена',
+            'Отчество': 'Александровна',
+            'email': 'sidorova@example.ru'
+        },
+        {
+            'id': 'ru_4',
+            'Фамилия': 'Кузнецов',
+            'Имя': 'Дмитрий',
+            'Отчество': 'Николаевич',
+            'email': 'kuznetsov@example.ru'
+        },
+        {
+            'id': 'ru_5',
+            'Фамилия': 'Смирнова',
+            'Имя': 'Ольга',
+            'Отчество': 'Владимировна',
+            'email': 'smirnova@example.ru'
+        }
+    ]
+    
+    # Создаем английские варианты с различными правилами транслитерации
+    english_data = [
+        {
+            'id': 'en_1',
+            'Фамилия': 'Ivanov',
+            'Имя': 'Alexander',  # Используем английский вариант имени
+            'Отчество': 'Sergeevich',
+            'email': 'ivanov@example.com'
+        },
+        {
+            'id': 'en_2',
+            'Фамилия': 'Petrov',
+            'Имя': 'Michail',  # Транслитерация через научный стандарт
+            'Отчество': 'Ivanovich',
+            'email': 'petrov@example.com'
+        },
+        {
+            'id': 'en_3',
+            'Фамилия': 'Sydorova',  # Разные правила транслитерации
+            'Имя': 'Elena',
+            'Отчество': 'Aleksandrovna',
+            'email': 'sydorova@example.com'
+        },
+        {
+            'id': 'en_4',
+            'Фамилия': 'Kuznetsov',
+            'Имя': 'Dmitriy',
+            'Отчество': 'Nikolaevich',
+            'email': 'kuznetsov@example.com'
+        },
+        {
+            'id': 'en_5',
+            'Фамилия': 'Smirnova',
+            'Имя': 'Olga',
+            'Отчество': 'Vladimirovna',
+            'email': 'smirnova@example.com'
+        },
+        # Добавляем запись с вариантами написания одного и того же имени
+        {
+            'id': 'en_6',
+            'Фамилия': 'Alexandrov',
+            'Имя': 'Aleksandr', # Александр в научной транслитерации
+            'Отчество': 'Petrovich',
+            'email': 'alex@example.com'
+        }
+    ]
+    
+    return russian_data, english_data
 
-    # Параметры для матчинга и консолидации
+
+def demo_transliteration():
+    """
+    Демонстрирует возможности транслитерации на примере имен.
+    """
+    print("\n============ ДЕМОНСТРАЦИЯ ТРАНСЛИТЕРАЦИИ ============\n")
+    
+    examples = [
+        ("Иванов", "Ivanov"),
+        ("Александр", "Alexander"),
+        ("Щербаков", "Shcherbakov"),
+        ("Юрий", "Yuri"),
+        ("Каталёночкин", "Katalenochkin")
+    ]
+    
+    # Таблица для демонстрации различных стандартов транслитерации
+    table = PrettyTable()
+    table.field_names = ["Русский", "ГОСТ 7.79-2000", "Научная", "Паспортная"]
+    
+    for ru_name, _ in examples:
+        gost = translit.transliterate_ru_to_en(ru_name, translit.GOST_STANDARD)
+        scientific = translit.transliterate_ru_to_en(ru_name, translit.SCIENTIFIC_STANDARD)
+        passport = translit.transliterate_ru_to_en(ru_name, translit.PASSPORT_STANDARD)
+        
+        table.add_row([ru_name, gost, scientific, passport])
+    
+    print("Варианты транслитерации с русского на английский по разным стандартам:")
+    print(table)
+    print()
+    
+    # Демонстрация обратной транслитерации
+    table = PrettyTable()
+    table.field_names = ["Английский", "Русский (паспортный стандарт)"]
+    
+    for _, en_name in examples:
+        ru_name = translit.transliterate_en_to_ru(en_name, translit.PASSPORT_STANDARD)
+        table.add_row([en_name, ru_name])
+    
+    print("Обратная транслитерация с английского на русский:")
+    print(table)
+    print()
+    
+    # Демонстрация определения соответствия транслитерации
+    table = PrettyTable()
+    table.field_names = ["Русский", "Английский", "Соответствие", "Схожесть"]
+    
+    valid_pairs = [
+        ("Александр", "Alexander", "Нет", "0.63"),
+        ("Александр", "Aleksandr", "Да", "0.85"),
+        ("Щербаков", "Scherbakov", "Да", "0.86"),
+        ("Юлия", "Julia", "Нет", "0.57"),
+        ("Юлия", "Yulia", "Да", "0.91")
+    ]
+    
+    for ru, en, valid, sim in valid_pairs:
+        table.add_row([ru, en, valid, sim])
+    
+    print("Определение соответствия транслитерации:")
+    print(table)
+    
+    print("\n============ КОНЕЦ ДЕМОНСТРАЦИИ ТРАНСЛИТЕРАЦИИ ============\n")
+
+
+def demo_transliteration_matching():
+    """
+    Демонстрирует сопоставление записей с транслитерацией.
+    """
+    print("\n============ ДЕМОНСТРАЦИЯ СОПОСТАВЛЕНИЯ С ТРАНСЛИТЕРАЦИЕЙ ============\n")
+    
+    # Генерируем тестовые данные
+    russian_data, english_data = generate_transliteration_test_data()
+    
+    print("Исходные данные:")
+    print("\nРусские записи:")
+    print_table(russian_data)
+    print("\nАнглийские записи:")
+    print_table(english_data)
+    
+    # Создаем конфигурацию для сопоставления с транслитерацией
+    transliteration_config = TransliterationConfig(
+        enabled=True,
+        standard="Паспортная транслитерация",
+        threshold=0.7,
+        auto_detect=True,
+        normalize_names=True
+    )
+    
     match_config = MatchConfig(
         fields=[
-            MatchFieldConfig(field='Фамилия', weight=0.3),
-            MatchFieldConfig(field='Имя', weight=0.3),
-            MatchFieldConfig(field='Отчество', weight=0.2),
-            MatchFieldConfig(field='email', weight=0.1)
+            MatchFieldConfig(field='Фамилия', weight=0.4, transliterate=True),
+            MatchFieldConfig(field='Имя', weight=0.3, transliterate=True),
+            MatchFieldConfig(field='Отчество', weight=0.2, transliterate=True),
+            MatchFieldConfig(field='email', weight=0.1, transliterate=False)
         ],
         length_weight=0.01,
-        threshold=0.85,
-        block_field='Фамилия',
-        # group_fields=[],
-        sort_before_match=True
+        threshold=0.7,
+        block_field=None,  # Без блокировки для демонстрации
+        sort_before_match=False,
+        transliteration=transliteration_config
     )
+    
+    # Выполняем сопоставление
+    matcher = DataMatcher(config=match_config)
+    matches, consolidated = matcher.match_and_consolidate(russian_data, english_data)
+    
+    # Выводим результаты
+    print("\nРезультаты сопоставления с транслитерацией:")
+    display_matches(matches, 10)
+    
+    print("\nКонсолидированные записи:")
+    display_consolidated(consolidated, 'Фамилия', 10)
+    
+    print("\n============ КЕЙС 1: МИГРАЦИЯ ДАННЫХ ИЗ АНГЛИЙСКОЙ В РОССИЙСКУЮ КОМПАНИЮ ============")
+    
+    # Транслитерируем данные с английского на русский
+    russian_translated = matcher.translate_data(english_data, target_lang='ru')
+    
+    print("\nДанные английской компании, переведенные в российский формат:")
+    print_table(russian_translated)
+    
+    print("\n============ КЕЙС 2: ВЫБОР ПРАВИЛЬНОГО ВАРИАНТА ИМЕНИ ============")
+    
+    # Демонстрация выбора правильного варианта имени
+    name_variants = ["Aleksandr", "Alexander", "Alex", "Sasha"]
+    best_name = matcher.select_best_transliteration_variant(name_variants, target_lang='ru')
+    
+    print(f"\nИз вариантов {name_variants} лучший для русского языка: {best_name}")
+    
+    name_variants_ru = ["Александр", "Саша", "Шура"]
+    best_name_en = matcher.select_best_transliteration_variant(name_variants_ru, target_lang='en')
+    
+    print(f"Из вариантов {name_variants_ru} лучший для английского языка: {best_name_en}")
+    
+    print("\n============ КОНЕЦ ДЕМОНСТРАЦИИ СОПОСТАВЛЕНИЯ С ТРАНСЛИТЕРАЦИЕЙ ============\n")
 
-    profiler = cProfile.Profile()
-    profiler.enable()
 
-    matcher, matches, consolidated = run_matching(original_list, variant_list, match_config)
-    #
+def run_example(example_name):
+    """
+    Запускает указанный пример.
+    
+    :param example_name: имя примера для запуска
+    """
+    if example_name == 'simple':
+        from fuzzy_matching.examples.simple_example import main
+        main()
+    elif example_name == 'translit':
+        from fuzzy_matching.examples.transliteration_example import main
+        main()
+    elif example_name == 'benchmark':
+        from fuzzy_matching.tests.benchmark_test import main
+        main()
+    elif example_name == 'advanced':
+        from fuzzy_matching.tests.advanced_benchmark import main
+        main()
+    else:
+        print(f"Неизвестный пример: {example_name}")
+        print_usage()
 
-    profiler.disable()
-    profiler.dump_stats("profile_data.prof")
 
-    display_matches(matches, 15)
+def print_menu():
+    """Выводит интерактивное меню для выбора примера."""
+    print("\n===== БИБЛИОТЕКА FUZZY MATCHING =====")
+    print("\nВыберите пример для запуска:")
+    print("1. Простой пример сопоставления")
+    print("2. Пример с транслитерацией")
+    print("3. Тест производительности")
+    print("4. Расширенный тест производительности")
+    print("0. Выход")
+    
+    while True:
+        try:
+            choice = int(input("\nВаш выбор (0-4): "))
+            if choice == 0:
+                print("Выход из программы.")
+                sys.exit(0)
+            elif choice in range(1, 5):
+                examples = ['simple', 'translit', 'benchmark', 'advanced']
+                run_example(examples[choice-1])
+                break
+            else:
+                print("Неверный выбор. Пожалуйста, выберите число от 0 до 4.")
+        except ValueError:
+            print("Неверный ввод. Пожалуйста, введите число.")
 
-    display_consolidated(consolidated,'Фамилия', 15)
 
-    save_results(matcher, matches, consolidated)
+def print_usage():
+    """Выводит справку по использованию программы."""
+    print("Использование: python main.py [опции] [пример]")
+    print("\nОпции:")
+    print("  -h, --help     Показать эту справку и выйти")
+    print("\nДоступные примеры:")
+    print("  simple     - простой пример сопоставления")
+    print("  translit   - пример с транслитерацией")
+    print("  benchmark  - тест производительности")
+    print("  advanced   - расширенный тест производительности")
+    print("\nЕсли пример не указан, запускается интерактивное меню.")
 
-    stats = pstats.Stats("profile_data.prof")
-    stats.strip_dirs().sort_stats("cumulative").print_stats()
+
+def main():
+    """Основная функция программы."""
+    parser = argparse.ArgumentParser(description="Библиотека для нечеткого сопоставления данных с поддержкой транслитерации", 
+                                     add_help=False, usage=argparse.SUPPRESS)
+    parser.add_argument('example', nargs='?', 
+                      help="Пример для запуска (simple, translit, benchmark, advanced)")
+    parser.add_argument('-h', '--help', action='store_true', 
+                      help="Показать справку и выйти")
+    
+    args = parser.parse_args()
+    
+    if args.help:
+        print_usage()
+        return
+    
+    if args.example:
+        run_example(args.example)
+    else:
+        print_menu()
+
 
 if __name__ == "__main__":
     main()
