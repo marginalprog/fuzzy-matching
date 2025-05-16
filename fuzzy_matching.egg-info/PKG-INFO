@@ -1,0 +1,21 @@
+Metadata-Version: 2.4
+Name: fuzzy_matching
+Version: 0.1.0
+Summary: Библиотека для нечеткого сопоставления данных с поддержкой транслитерации
+Author: Author
+Author-email: author@example.com
+Keywords: fuzzy matching,transliteration,data matching
+Requires-Python: >=3.7
+Requires-Dist: rapidfuzz
+Requires-Dist: pandas
+Requires-Dist: prettytable
+Requires-Dist: faker
+Requires-Dist: gender_guesser
+Requires-Dist: matplotlib
+Requires-Dist: numpy
+Dynamic: author
+Dynamic: author-email
+Dynamic: keywords
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

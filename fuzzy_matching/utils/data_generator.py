@@ -8,13 +8,21 @@ from enum import Enum
 
 
 class Language(Enum):
-    RUS = 'ru_RU',
+    RUS = 'ru_RU'
     ENG = 'en_US'
 
 
 class DataGenerator:
     """
     Генерирует фиктивные данные с возможными искажениями (ошибками) в фамилии, имени, отчестве, email и телефоне.
+    
+    Основные функции:
+    - Генерация чистых данных с помощью библиотеки Faker
+    - Внесение различных искажений в данные (дублирование букв, замена букв и т.д.)
+    - Создание пар данных для тестирования алгоритмов сопоставления
+    - Сохранение сгенерированных данных в форматах JSON и CSV
+    
+    Параметры искажений контролируются через словарь вероятностей.
     """
     DEFAULT_PROBABILITIES = {
         'double_letter': 0.4,       # вероятность дублирования буквы
@@ -37,9 +45,19 @@ class DataGenerator:
     def __init__(self,
                  language=Language.RUS,
                  probabilities=None,
+                 use_patronymic_for_english=False
                  ):
+        """
+        Инициализирует генератор данных.
+        
+        :param language: язык генерируемых данных (Language.RUS или Language.ENG)
+        :param probabilities: словарь вероятностей различных искажений
+        :param use_patronymic_for_english: если True, для английской локализации будет
+                                         использоваться транслитерированное отчество вместо middle name
+        """
         self.language = language
         self.fake = faker.Faker(self.language.value)
+        self.use_patronymic_for_english = use_patronymic_for_english
 
         # Устанавливаем вероятности искажений (или используем по умолчанию)
         probs = probabilities or {}
@@ -53,14 +71,25 @@ class DataGenerator:
         self.gender_detector = gender.Detector()
 
     def doubling_letter(self, text):
-        """Дублирует случайную букву в строке."""
+        """
+        Дублирует случайную букву в строке.
+        
+        :param text: исходный текст
+        :return: текст с дублированной случайной буквой
+        """
         if len(text) < 2:
             return text
         idx = random.randint(0, len(text) - 1)
         return text[:idx] + text[idx] + text[idx:]
 
     def changing_letter(self, text, email_flag=False):
-        """Заменяет случайную букву на другую (для email используется латиница)."""
+        """
+        Заменяет случайную букву на другую.
+        
+        :param text: исходный текст
+        :param email_flag: флаг для замены буквы в email (используется латиница)
+        :return: текст с замененной случайной буквой
+        """
         if len(text) < 2:
             return text
         idx = random.randint(1, len(text) - 1)
@@ -85,8 +114,8 @@ class DataGenerator:
             return phone
 
         if new_person:
-            # Если ФИО было полностью изменено, генерируем новый телефон
-            return self.fake.email()
+            # Если ФИО было полностью изменено, генерируем новый номер телефона
+            return self.fake.phone_number()
 
         # Изменяем одну случайную цифру в номере телефона
         idx = random.randint(0, len(digits) - 1)
@@ -125,15 +154,102 @@ class DataGenerator:
         # Без изменений
         return email
 
-    """Функция для создания небольших различий в именах"""
+    def _generate_middle_name_male(self):
+        """
+        Генерирует мужское отчество (для русского) или middle name (для английского).
+        
+        :return: отчество или middle name
+        """
+        if self.language == Language.RUS:
+            # Список популярных русских мужских отчеств
+            middle_names = [
+                'Александрович', 'Алексеевич', 'Андреевич', 'Антонович', 'Аркадьевич',
+                'Борисович', 'Валентинович', 'Васильевич', 'Викторович', 'Владимирович',
+                'Вячеславович', 'Геннадьевич', 'Георгиевич', 'Григорьевич', 'Данилович',
+                'Дмитриевич', 'Евгеньевич', 'Егорович', 'Иванович', 'Игоревич',
+                'Ильич', 'Кириллович', 'Константинович', 'Леонидович', 'Максимович',
+                'Михайлович', 'Николаевич', 'Олегович', 'Павлович', 'Петрович',
+                'Романович', 'Сергеевич', 'Станиславович', 'Степанович', 'Фёдорович',
+                'Юрьевич', 'Яковлевич', 'Ярославович'
+            ]
+            return random.choice(middle_names)
+        else:
+            # В английской традиции middle name - это обычно просто второе имя, не отчество
+            # Можно использовать обычное мужское имя
+            return self.fake.first_name_male()
+
+    def _generate_middle_name_female(self):
+        """
+        Генерирует женское отчество (для русского) или middle name (для английского).
+        
+        :return: отчество или middle name
+        """
+        if self.language == Language.RUS:
+            # Список популярных русских женских отчеств
+            middle_names = [
+                'Александровна', 'Алексеевна', 'Андреевна', 'Антоновна', 'Аркадьевна',
+                'Борисовна', 'Валентиновна', 'Васильевна', 'Викторовна', 'Владимировна',
+                'Вячеславовна', 'Геннадьевна', 'Георгиевна', 'Григорьевна', 'Даниловна',
+                'Дмитриевна', 'Евгеньевна', 'Егоровна', 'Ивановна', 'Игоревна',
+                'Ильинична', 'Кирилловна', 'Константиновна', 'Леонидовна', 'Максимовна',
+                'Михайловна', 'Николаевна', 'Олеговна', 'Павловна', 'Петровна',
+                'Романовна', 'Сергеевна', 'Станиславовна', 'Степановна', 'Фёдоровна',
+                'Юрьевна', 'Яковлевна', 'Ярославовна'
+            ]
+            return random.choice(middle_names)
+        else:
+            # В английской традиции middle name - это обычно просто второе имя, не отчество
+            # Можно использовать обычное женское имя
+            return self.fake.first_name_female()
+
+    def _get_transliterated_middle_name(self, gender='male'):
+        """
+        Генерирует транслитерированное отчество для тестирования транслитерации.
+        Это полезно, когда нужно протестировать алгоритмы транслитерации с русского на английский.
+        
+        :param gender: пол ('м' или 'ж')
+        :return: транслитерированное отчество
+        """
+        # Временно меняем язык на русский, генерируем отчество и транслитерируем
+        original_language = self.language
+        self.language = Language.RUS
+        
+        if gender == 'м':
+            middle_name_ru = self._generate_middle_name_male()
+        else:
+            middle_name_ru = self._generate_middle_name_female()
+        
+        # Возвращаем исходный язык
+        self.language = original_language
+        
+        # Простая транслитерация (можно заменить на более сложную)
+        transliteration_map = {
+            'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+            'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+            'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+            'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+            'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+            'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'E',
+            'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M',
+            'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
+            'Ф': 'F', 'Х': 'Kh', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Sch',
+            'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya',
+        }
+        
+        result = ''
+        for char in middle_name_ru:
+            result += transliteration_map.get(char, char)
+        
+        return result
+
     def vary_name(self, name, part, gender='male') -> (str, bool):
         """
-        Вносит искажения в одно из слов ФИО (имя, фамилию или отчество):
-        - дублирует букву,
-        — заменяет букву,
-        — полностью меняет на другое (через Faker),
-        — добавляет суффикс.
-        Возвращает (new_name, full_change_flag).
+        Вносит искажения в одно из слов ФИО (имя, фамилию или отчество).
+        
+        :param name: исходное имя
+        :param part: часть ФИО ('first' - имя, 'last' - фамилия, 'middle' - отчество)
+        :param gender: пол ('м' или 'ж')
+        :return: кортеж (измененное имя, флаг полной замены имени)
         """
         # Определяем вероятность изменения буквы или всего имени
         rnd = random.random()
@@ -142,13 +258,13 @@ class DataGenerator:
         elif rnd < self.double_letter_prob + self.change_letter_prob:
             return self.changing_letter(name), False
         elif rnd < self.double_letter_prob + self.change_letter_prob + self.change_name_prob:
-            # Полная замена имени через Faker
+            # Полная замена имени через Faker или наши кастомные генераторы
             if part == 'first':
                 new_name = self.fake.first_name_male() if gender == 'м' else self.fake.first_name_female()
             elif part == 'last':
                 new_name = self.fake.last_name_male() if gender == 'м' else self.fake.last_name_female()
             elif part == 'middle':
-                new_name = self.fake.middle_name_male() if gender == 'м' else self.fake.middle_name_female()
+                new_name = self._generate_middle_name_male() if gender == 'м' else self._generate_middle_name_female()
             else:
                 new_name = name
             return new_name, True
@@ -162,21 +278,36 @@ class DataGenerator:
                 return name + random.choice(english_suffixes), False
         return name, False
 
-
     """Генерация списка клиентов"""
-    def generate_clean_clients_list(self, num_clients, fields=None):
+    def generate_clean_clients_list(self, num_clients, fields=None, use_patronymic_for_english=None):
         """
         Генерирует список клиентов без искажений.
-        :fields - уточнение генерируемых полей
+        
+        :param num_clients: количество клиентов для генерации
+        :param fields: список полей для генерации (если None, используются все поля)
+        :param use_patronymic_for_english: если указано, переопределяет настройку из конструктора
+        :return: список клиентов
         """
         if fields is None:
             fields = list(self.FIELD_NAMES.values())
+            
+        # Используем параметр из аргумента, если он указан, иначе берем из конструктора
+        use_patronymic = use_patronymic_for_english if use_patronymic_for_english is not None else self.use_patronymic_for_english
+            
         clients = []
         for i in range(num_clients):
             gender = random.choice(['м', 'ж'])
             first = self.fake.first_name_male() if gender == 'м' else self.fake.first_name_female()
             last = self.fake.last_name_male() if gender == 'м' else self.fake.last_name_female()
-            middle = self.fake.middle_name_male() if gender == 'м' else self.fake.middle_name_female()
+            
+            # Выбираем стратегию генерации отчества/middle name
+            if self.language == Language.ENG and use_patronymic:
+                # Используем транслитерированное русское отчество для английской локализации
+                middle = self._get_transliterated_middle_name(gender)
+            else:
+                # Используем обычное отчество или middle name в зависимости от локализации
+                middle = self._generate_middle_name_male() if gender == 'м' else self._generate_middle_name_female()
+                
             email = self.fake.email()
             phone = self.fake.phone_number()
             client = {}
@@ -198,6 +329,10 @@ class DataGenerator:
     def apply_distortions(self, clients, fields=None):
         """
         Применяет искажения к списку клиентов.
+        
+        :param clients: исходный список клиентов
+        :param fields: список полей, к которым будут применены искажения
+        :return: искаженный список клиентов
         """
         if fields is None:
             fields = list(self.FIELD_NAMES.values())
@@ -231,16 +366,32 @@ class DataGenerator:
     def generate_clients_pair(self, num_clients, fields=None):
         """
         Генерирует пару списков клиентов: оригинальный и искаженный.
+        
+        :param num_clients: количество клиентов для генерации
+        :param fields: список полей для генерации
+        :return: кортеж (список оригинальных клиентов, список искаженных клиентов)
         """
         clean_clients = self.generate_clean_clients_list(num_clients, fields)
         distorted_clients = self.apply_distortions(clean_clients, fields)
         return clean_clients, distorted_clients
 
     def save_to_json(self, data, filename):
+        """
+        Сохраняет данные в JSON-файл.
+        
+        :param data: данные для сохранения
+        :param filename: имя файла для сохранения
+        """
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
     def save_to_csv(self, data, filename):
+        """
+        Сохраняет данные в CSV-файл.
+        
+        :param data: данные для сохранения
+        :param filename: имя файла для сохранения
+        """
         if not data:
             return
         with open(filename, 'w', newline='', encoding='utf-8') as f:

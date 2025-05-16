@@ -3,3 +3,5 @@
 __pycache__/
 
 profile_data.prof
+
+benchmark_data_cache.pkl
