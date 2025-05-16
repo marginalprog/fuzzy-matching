@@ -12,9 +12,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from prettytable import PrettyTable
 
-from data_generator import DataGenerator, Language
-from data_matcher import DataMatcher
-from match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig
+from fuzzy_matching.utils.data_generator import DataGenerator, Language
+from fuzzy_matching.core.data_matcher import DataMatcher
+from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig
 
 
 def generate_mixed_language_data(count, ru_to_en_ratio=0.5):

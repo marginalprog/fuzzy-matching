@@ -63,7 +63,7 @@ def generate_test_data(sizes):
         
         # Генерируем русские и английские данные
         ru_gen = DataGenerator(language=Language.RUS, probabilities=probabilities)
-        en_gen = DataGenerator(language=Language.ENG, probabilities=probabilities)
+        en_gen = DataGenerator(language=Language.ENG, probabilities=probabilities, use_patronymic_for_english=True)
         
         # Разделяем размер поровну между русскими и английскими данными
         ru_size = size // 2

@@ -40,8 +40,8 @@ def generate_mixed_language_data(count, ru_to_en_ratio=0.5):
     ru_count = int(count * ru_to_en_ratio)
     ru_fields = ['Фамилия', 'Имя', 'Отчество', 'email']
     
-    # Генерируем английские записи на основе русских с транслитерацией
-    en_gen = DataGenerator(language=Language.ENG, probabilities=probabilities)
+    # Генерируем английские записи с транслитерированными отчествами для тестирования алгоритмов транслитерации
+    en_gen = DataGenerator(language=Language.ENG, probabilities=probabilities, use_patronymic_for_english=True)
     en_count = count - ru_count
     
     # Генерируем исходные русские данные
@@ -65,7 +65,7 @@ def generate_mixed_language_data(count, ru_to_en_ratio=0.5):
         }
         english_data.append(en_client)
     
-    # Добавляем новые английские данные
+    # Добавляем новые английские данные - уже настроены на использование транслитерированных отчеств
     en_fields = ['Фамилия', 'Имя', 'Отчество', 'email']
     new_en_data = en_gen.generate_clean_clients_list(en_count - translit_count, en_fields)
     

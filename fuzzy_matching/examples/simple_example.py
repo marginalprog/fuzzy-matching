@@ -125,19 +125,20 @@ def demo_transliteration_matching():
         }
     ]
     
+    # Создадим более правильные английские варианты имен с учетом культурных особенностей
     english_data = [
         {
             'id': 'en_1',
             'Фамилия': 'Ivanov',
-            'Имя': 'Alexander',
-            'Отчество': 'Sergeevich',
+            'Имя': 'Alexander',  # Английский вариант имени
+            'Отчество': 'Sergeevich',  # Транслитерированное отчество
             'email': 'ivanov@example.com'
         },
         {
             'id': 'en_2',
             'Фамилия': 'Petrov',
-            'Имя': 'Mikhail',
-            'Отчество': 'Ivanovich',
+            'Имя': 'Michael',  # Английский эквивалент имени
+            'Отчество': 'Ivanovich',  # Транслитерированное отчество
             'email': 'petrov@example.com'
         }
     ]

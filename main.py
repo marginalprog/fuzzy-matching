@@ -13,10 +13,10 @@ import pandas as pd
 import re
 
 from prettytable import PrettyTable
-from data_generator import DataGenerator, Language
-from data_matcher import DataMatcher
-from match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig
-import transliteration_utils as translit
+from fuzzy_matching.utils.data_generator import DataGenerator, Language
+from fuzzy_matching.core.data_matcher import DataMatcher
+from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig
+import fuzzy_matching.utils.transliteration_utils as translit
 
 
 def generate_test_data(probabilities, gen_fields, count=100):
