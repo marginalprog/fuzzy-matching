@@ -41,7 +41,7 @@ def generate_test_data():
     # Генерируем данные
     generator = DataGenerator(language=Language.RUS, probabilities=probabilities)
     fields = ['Фамилия', 'Имя', 'Отчество', 'email']
-    original_data, variant_data = generator.generate_clients_pair(10, fields)
+    original_data, variant_data = generator.generate_records_pair(10, fields)
     
     return original_data, variant_data
 

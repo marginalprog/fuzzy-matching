@@ -14,7 +14,7 @@ from prettytable import PrettyTable
 
 from fuzzy_matching.utils.data_generator import DataGenerator, Language
 from fuzzy_matching.core.data_matcher import DataMatcher
-from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig
+from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig, FuzzyAlgorithm
 
 
 def generate_mixed_language_data(count, ru_to_en_ratio=0.5):
@@ -78,13 +78,14 @@ def generate_mixed_language_data(count, ru_to_en_ratio=0.5):
     return russian_data, english_data
 
 
-def run_benchmark(ru_data, en_data, with_transliteration=False):
+def run_benchmark(ru_data, en_data, with_transliteration=False, fuzzy_algorithm=FuzzyAlgorithm.RATIO):
     """
     Запускает тестирование производительности матчинга.
     
     :param ru_data: список записей на русском языке
     :param en_data: список записей на английском языке
     :param with_transliteration: использовать ли транслитерацию
+    :param fuzzy_algorithm: алгоритм нечеткого сопоставления
     :return: кортеж (время_выполнения, кол-во_совпадений, профиль)
     """
     # Настройка транслитерации
@@ -108,7 +109,8 @@ def run_benchmark(ru_data, en_data, with_transliteration=False):
         threshold=0.7,
         block_field='Фамилия',  # Используем блокировку для ускорения
         sort_before_match=True,
-        transliteration=transliteration_config
+        transliteration=transliteration_config,
+        fuzzy_algorithm=fuzzy_algorithm  # Указываем алгоритм сопоставления
     )
     
     # Создаем профилировщик
@@ -219,6 +221,15 @@ def main():
     # Размеры наборов данных для тестирования
     data_sizes = [100, 1000]
     
+    # Алгоритмы для тестирования
+    algorithms = [
+        FuzzyAlgorithm.RATIO,
+        FuzzyAlgorithm.PARTIAL_RATIO,
+        FuzzyAlgorithm.TOKEN_SORT,
+        FuzzyAlgorithm.TOKEN_SET,
+        FuzzyAlgorithm.WRatio
+    ]
+    
     results = {}
     
     # Запускаем тесты для каждого размера данных
@@ -226,16 +237,22 @@ def main():
         print(f"\nГенерация данных размером {size} записей...")
         ru_data, en_data = generate_mixed_language_data(size)
         
+        results[size] = {}
+        
         print(f"Запуск матчинга без транслитерации ({size} записей)...")
         standard_results = run_benchmark(ru_data, en_data, with_transliteration=False)
+        results[size]["Без транслитерации"] = standard_results
         
         print(f"Запуск матчинга с транслитерацией ({size} записей)...")
         translit_results = run_benchmark(ru_data, en_data, with_transliteration=True)
+        results[size]["С транслитерацией"] = translit_results
         
-        results[size] = {
-            "Без транслитерации": standard_results,
-            "С транслитерацией": translit_results
-        }
+        # Тестируем разные алгоритмы нечеткого сопоставления
+        for algorithm in algorithms:
+            algorithm_name = algorithm.name
+            print(f"Запуск матчинга с алгоритмом {algorithm_name} ({size} записей)...")
+            algo_results = run_benchmark(ru_data, en_data, with_transliteration=True, fuzzy_algorithm=algorithm)
+            results[size][f"Алгоритм {algorithm_name}"] = algo_results
     
     # Выводим результаты
     print_benchmark_results(results, "Результаты тестирования производительности")
@@ -253,6 +270,8 @@ def main():
     print(results[1000]["Без транслитерации"][3])
     print("\nС транслитерацией:")
     print(results[1000]["С транслитерацией"][3])
+    print("\nТокен-сортировка (TOKEN_SORT):")
+    print(results[1000][f"Алгоритм TOKEN_SORT"][3])
     
     print("\n===== ЗАВЕРШЕНИЕ ТЕСТИРОВАНИЯ ПРОИЗВОДИТЕЛЬНОСТИ =====\n")
 

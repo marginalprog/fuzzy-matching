@@ -21,31 +21,31 @@ import fuzzy_matching.utils.transliteration_utils as translit
 
 def generate_test_data(probabilities, gen_fields, count=100):
     """
-    Генерирует тестовые данные клиентов: оригинальный и искаженный списки.
+    Генерирует тестовые данные: оригинальный и искаженный списки.
     
     :param probabilities: словарь вероятностей различных искажений
     :param gen_fields: список полей для генерации
-    :param count: количество клиентов для генерации (по умолчанию 100)
-    :return: кортеж (список оригинальных клиентов, список искаженных клиентов)
+    :param count: количество записей для генерации (по умолчанию 100)
+    :return: кортеж (список оригинальных записей, список искаженных записей)
     """
     dg = DataGenerator(probabilities=probabilities)
-    original_list, variant_list = dg.generate_clients_pair(count, fields=gen_fields)
+    original_list, variant_list = dg.generate_records_pair(count, fields=gen_fields)
     return original_list, variant_list
 
 
 # todo: in/out json/csv на выбор?
 def generate_and_save_test_data(probabilities, gen_fields, count=100, file_format='json'):
     """
-    Генерирует тестовые данные клиентов и сохраняет их в файлы.
+    Генерирует тестовые данные и сохраняет их в файлы.
     
     :param probabilities: словарь вероятностей различных искажений
     :param gen_fields: список полей для генерации
-    :param count: количество клиентов для генерации (по умолчанию 100)
+    :param count: количество записей для генерации (по умолчанию 100)
     :param file_format: формат файлов для сохранения ('json' или 'csv')
-    :return: кортеж (список оригинальных клиентов, список искаженных клиентов)
+    :return: кортеж (список оригинальных записей, список искаженных записей)
     """
     dg = DataGenerator(probabilities=probabilities)
-    original_list, variant_list = dg.generate_clients_pair(count, fields=gen_fields)
+    original_list, variant_list = dg.generate_records_pair(count, fields=gen_fields)
 
     if file_format == 'json':
         dg.save_to_json(original_list, 'original_data_list.json')
@@ -61,15 +61,15 @@ def generate_and_save_test_data(probabilities, gen_fields, count=100, file_forma
 
 def display_sample_data(original_list, variant_list, rows_count=5):
     """
-    Выводит образцы данных из обоих списков клиентов в виде таблицы.
+    Выводит образцы данных из обоих списков в виде таблицы.
     
-    :param original_list: список оригинальных клиентов
-    :param variant_list: список искаженных клиентов
+    :param original_list: список оригинальных записей
+    :param variant_list: список искаженных записей
     :param rows_count: количество строк для отображения (по умолчанию 5)
     """
-    print(f'Первые {rows_count} клиентов из оригинального списка:')
+    print(f'Первые {rows_count} записей из оригинального списка:')
     print_table(original_list[:rows_count])
-    print(f'\nПервые {rows_count} клиентов из искаженного списка:')
+    print(f'\nПервые {rows_count} записей из искаженного списка:')
     print_table(variant_list[:rows_count])
     print()
 
@@ -78,8 +78,8 @@ def run_matching(original_list, variant_list, config: MatchConfig):
     """
     Запускает процесс сопоставления и консолидации данных.
     
-    :param original_list: список оригинальных клиентов
-    :param variant_list: список искаженных клиентов
+    :param original_list: список оригинальных записей
+    :param variant_list: список искаженных записей
     :param config: конфигурация для сопоставления (экземпляр MatchConfig)
     :return: кортеж (экземпляр DataMatcher, список совпадений, список консолидированных записей)
     """
@@ -429,6 +429,12 @@ def run_example(example_name):
     elif example_name == 'advanced':
         from fuzzy_matching.tests.advanced_benchmark import main
         main()
+    elif example_name == 'algorithms':
+        from fuzzy_matching.examples.algorithm_comparison_example import main
+        main()
+    elif example_name == 'domain':
+        from fuzzy_matching.examples.domain_specific_example import main
+        main()
     else:
         print(f"Неизвестный пример: {example_name}")
         print_usage()
@@ -442,20 +448,22 @@ def print_menu():
     print("2. Пример с транслитерацией")
     print("3. Тест производительности")
     print("4. Расширенный тест производительности")
+    print("5. Сравнение алгоритмов нечеткого сопоставления")
+    print("6. Использование предметно-ориентированных алгоритмов")
     print("0. Выход")
     
     while True:
         try:
-            choice = int(input("\nВаш выбор (0-4): "))
+            choice = int(input("\nВаш выбор (0-6): "))
             if choice == 0:
                 print("Выход из программы.")
                 sys.exit(0)
-            elif choice in range(1, 5):
-                examples = ['simple', 'translit', 'benchmark', 'advanced']
+            elif choice in range(1, 7):
+                examples = ['simple', 'translit', 'benchmark', 'advanced', 'algorithms', 'domain']
                 run_example(examples[choice-1])
                 break
             else:
-                print("Неверный выбор. Пожалуйста, выберите число от 0 до 4.")
+                print("Неверный выбор. Пожалуйста, выберите число от 0 до 6.")
         except ValueError:
             print("Неверный ввод. Пожалуйста, введите число.")
 
@@ -470,6 +478,8 @@ def print_usage():
     print("  translit   - пример с транслитерацией")
     print("  benchmark  - тест производительности")
     print("  advanced   - расширенный тест производительности")
+    print("  algorithms - сравнение алгоритмов нечеткого сопоставления")
+    print("  domain     - использование предметно-ориентированных алгоритмов")
     print("\nЕсли пример не указан, запускается интерактивное меню.")
 
 
