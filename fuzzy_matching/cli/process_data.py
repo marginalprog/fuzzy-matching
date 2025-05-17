@@ -5,7 +5,7 @@
 Примеры использования:
 
 1. Сопоставление данных из CSV файлов:
-   python process_data.py --mode match \
+   python -m fuzzy_matching.cli.process_data --mode match \
        --input1 dataset1.csv --format1 csv \
        --input2 dataset2.csv --format2 csv \
        --output-matches matches.json \
@@ -15,7 +15,7 @@
        --domain person
 
 2. Транслитерация данных из JSON файла:
-   python process_data.py --mode transliterate \
+   python -m fuzzy_matching.cli.process_data --mode transliterate \
        --input1 russian_names.json --format1 json \
        --target-lang en \
        --output-consolidated english_names.json
@@ -203,52 +203,60 @@ def main():
     # Режим транслитерации
     if args.mode == 'transliterate':
         if not args.target_lang:
-            print("Ошибка: для транслитерации необходимо указать целевой язык (--target-lang)")
+            print("Ошибка: для режима транслитерации необходимо указать целевой язык (--target-lang)")
             sys.exit(1)
+        
+        if args.verbose:
+            print(f"Транслитерация данных из {args.input1} в {args.target_lang}...")
         
         # Определяем поля для транслитерации
-        transliterate_fields = ['Фамилия', 'Имя', 'Отчество']
+        fields_to_transliterate = []
         if args.transliterate_fields:
-            transliterate_fields = [field.strip() for field in args.transliterate_fields.split(',')]
+            fields_to_transliterate = [f.strip() for f in args.transliterate_fields.split(',')]
+        else:
+            # По умолчанию транслитерируем все текстовые поля
+            fields_to_transliterate = ['Фамилия', 'Имя', 'Отчество']
         
-        try:
-            if args.verbose:
-                print(f"Транслитерация данных с {args.target_lang == 'ru' and 'английского на русский' or 'русского на английский'}...")
-            
-            # Транслитерируем данные
-            transliterated_data = matcher.translate_data(
-                data1,
-                target_lang=args.target_lang,
-                fields=transliterate_fields
-            )
-            
-            # Сохраняем результаты
-            output_file = args.output_consolidated or f"transliterated_{args.target_lang}.{args.output_format}"
-            if args.output_format == 'csv':
-                matcher.save_consolidated_to_csv(transliterated_data, output_file)
+        # Транслитерируем данные
+        transliterated_data = matcher.transliterate_data(
+            data1, 
+            target_lang=args.target_lang,
+            fields=fields_to_transliterate
+        )
+        
+        # Сохраняем результаты
+        if args.output_consolidated:
+            if args.output_format == 'json':
+                matcher.save_consolidated_to_json(transliterated_data, args.output_consolidated)
             else:
-                matcher.save_consolidated_to_json(transliterated_data, output_file)
+                matcher.save_consolidated_to_csv(transliterated_data, args.output_consolidated)
             
-            print(f"Транслитерированные данные сохранены в {output_file}")
-        except Exception as e:
-            print(f"Ошибка при транслитерации данных: {str(e)}")
-            sys.exit(1)
+            if args.verbose:
+                print(f"Результаты сохранены в {args.output_consolidated}")
+        else:
+            # Выводим результаты на экран
+            print("\nРезультаты транслитерации:")
+            for i, record in enumerate(transliterated_data[:10]):
+                print(f"{i+1}. {record}")
+            
+            if len(transliterated_data) > 10:
+                print(f"... и еще {len(transliterated_data) - 10} записей")
     
     # Режим сопоставления
     else:
         if not args.input2:
-            print("Ошибка: для сопоставления необходимо указать второй входной файл (--input2)")
+            print("Ошибка: для режима сопоставления необходимо указать второй входной файл (--input2)")
             sys.exit(1)
         
         if not args.format2:
-            print("Ошибка: для сопоставления необходимо указать формат второго входного файла (--format2)")
+            print("Ошибка: для режима сопоставления необходимо указать формат второго файла (--format2)")
             sys.exit(1)
         
+        # Загружаем второй набор данных
         try:
             if args.verbose:
                 print(f"Загрузка данных из {args.input2}...")
             
-            # Загружаем второй набор данных
             data2 = None
             if args.format2 == 'csv':
                 data2 = matcher.load_from_csv(args.input2, name_fields)
@@ -257,37 +265,48 @@ def main():
             
             if args.verbose:
                 print(f"Загружено {len(data2)} записей из {args.input2}")
-                print("Выполнение сопоставления...")
-            
-            # Выполняем сопоставление
-            matches, consolidated = matcher.match_and_consolidate(data1, data2)
+        except Exception as e:
+            print(f"Ошибка при загрузке данных из {args.input2}: {str(e)}")
+            sys.exit(1)
+        
+        # Выполняем сопоставление
+        if args.verbose:
+            print(f"Сопоставление данных...")
+        
+        matches, consolidated = matcher.match_and_consolidate(data1, data2)
+        
+        if args.verbose:
+            print(f"Найдено {len(matches)} совпадений")
+            print(f"Консолидировано {len(consolidated)} записей")
+        
+        # Сохраняем результаты
+        if args.output_matches:
+            if args.output_format == 'json':
+                matcher.save_matches_to_json(matches, args.output_matches)
+            else:
+                matcher.save_matches_to_csv(matches, args.output_matches)
             
             if args.verbose:
-                print(f"Найдено {len(matches)} совпадений")
-                print(f"Создано {len(consolidated)} консолидированных записей")
+                print(f"Совпадения сохранены в {args.output_matches}")
+        
+        if args.output_consolidated:
+            if args.output_format == 'json':
+                matcher.save_consolidated_to_json(consolidated, args.output_consolidated)
+            else:
+                matcher.save_consolidated_to_csv(consolidated, args.output_consolidated)
             
-            # Сохраняем результаты сопоставления
-            if args.output_matches:
-                if args.output_format == 'csv':
-                    matcher.save_matches_to_csv(matches, args.output_matches)
-                else:
-                    matcher.save_matches_to_json(matches, args.output_matches)
-                print(f"Результаты сопоставления сохранены в {args.output_matches}")
-            
-            # Сохраняем консолидированные данные
-            if args.output_consolidated:
-                if args.output_format == 'csv':
-                    matcher.save_consolidated_to_csv(consolidated, args.output_consolidated)
-                else:
-                    matcher.save_consolidated_to_json(consolidated, args.output_consolidated)
+            if args.verbose:
                 print(f"Консолидированные данные сохранены в {args.output_consolidated}")
+        
+        if not args.output_matches and not args.output_consolidated:
+            # Выводим результаты на экран
+            print("\nНайденные совпадения:")
+            for i, match in enumerate(matches[:5]):
+                print(f"{i+1}. {match}")
             
-            print(f"Найдено {len(matches)} совпадений")
-            print(f"Создано {len(consolidated)} консолидированных записей")
-        except Exception as e:
-            print(f"Ошибка при сопоставлении данных: {str(e)}")
-            sys.exit(1)
+            if len(matches) > 5:
+                print(f"... и еще {len(matches) - 5} совпадений")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main() 

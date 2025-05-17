@@ -1,13 +1,21 @@
-import re
-import json
+"""
+Основной модуль для сопоставления данных.
+"""
+
+import os
 import csv
-from typing import Optional, List, Dict, Tuple, Any
+import json
+import pandas as pd
+from rapidfuzz import fuzz, process
+from typing import List, Dict, Tuple, Any, Optional, Union
 
-from rapidfuzz import fuzz
+import fuzzy_matching.utils.transliteration.transliteration_utils as translit
+from fuzzy_matching.core.match_config_classes import (
+    MatchConfig, MatchFieldConfig, TransliterationConfig, 
+    FuzzyAlgorithm, DomainSpecificAlgorithm
+)
+
 from collections import defaultdict
-
-from fuzzy_matching.core.match_config_classes import MatchConfig, TransliterationConfig, FuzzyAlgorithm
-import fuzzy_matching.utils.transliteration_utils as translit
 
 
 class DataMatcher:

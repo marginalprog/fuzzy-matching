@@ -1,11 +1,27 @@
 /venv
 /.idea
 __pycache__/
+**/__pycache__/
 
 profile_data.prof
 
 benchmark_data_cache.pkl
 
 benchmark_results.csv
+*.png
+*.prof
 
 .DS_Store
+**/.DS_Store
+
+*.egg-info/
+/dist/
+/build/
+
+# Дублирующиеся файлы в корне проекта
+/main.py
+/process_data.py
+/transliteration_utils.py
+/advanced_benchmark.py
+/benchmark_test.py
+/generate_reports.py
