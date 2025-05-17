@@ -217,7 +217,7 @@ def build_match_config(config_dict):
     # Создаем конфигурацию транслитерации
     transliteration_config = TransliterationConfig(
         enabled=config_dict['transliteration_enabled'],
-        standard="Паспортная транслитерация",
+        standard="Паспортная",
         threshold=0.7,
         auto_detect=True,
         normalize_names=True

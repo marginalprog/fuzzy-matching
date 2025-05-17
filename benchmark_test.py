@@ -45,7 +45,7 @@ def generate_mixed_language_data(count, ru_to_en_ratio=0.5):
     en_count = count - ru_count
     
     # Генерируем исходные русские данные
-    russian_data = ru_gen.generate_clean_clients_list(ru_count, ru_fields)
+    russian_data = ru_gen.generate_clean_records_list(ru_count, ru_fields)
     
     # Создаем английские варианты с транслитерацией части русских данных
     # и добавляем новые английские данные
@@ -67,8 +67,8 @@ def generate_mixed_language_data(count, ru_to_en_ratio=0.5):
     
     # Добавляем новые английские данные
     en_fields = ['Фамилия', 'Имя', 'Отчество', 'email']
-    new_en_data = en_gen.generate_clean_clients_list(en_count - translit_count, en_fields)
-    
+    new_en_data = en_gen.generate_clean_records_list(en_count - translit_count, en_fields)
+
     # Изменяем ID для новых английских данных
     for client in new_en_data:
         client['id'] = f"en_{client['id']}"
@@ -90,7 +90,7 @@ def run_benchmark(ru_data, en_data, with_transliteration=False):
     # Настройка транслитерации
     transliteration_config = TransliterationConfig(
         enabled=with_transliteration,
-        standard="Паспортная транслитерация",
+        standard="Паспортная",
         threshold=0.7,
         auto_detect=True,
         normalize_names=True

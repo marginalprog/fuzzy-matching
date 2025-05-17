@@ -72,19 +72,19 @@ PASSPORT_EN_TO_RU_MAP = {
 
 # Создаем экземпляры стандартов
 GOST_STANDARD = TransliterationStandard(
-    "ГОСТ 7.79-2000", 
+    "ГОСТ", # 7.79-2000
     "Российский стандарт транслитерации, соответствующий ISO 9:1995",
     GOST_779_MAP
 )
 
 SCIENTIFIC_STANDARD = TransliterationStandard(
-    "Научная транслитерация", 
+    "Научная", 
     "Используется в лингвистике и научных работах",
     SCIENTIFIC_MAP
 )
 
 PASSPORT_STANDARD = TransliterationStandard(
-    "Паспортная транслитерация", 
+    "Паспортная", 
     "Упрощенная транслитерация, используемая в загранпаспортах РФ",
     PASSPORT_MAP,
     PASSPORT_EN_TO_RU_MAP

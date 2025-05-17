@@ -70,8 +70,8 @@ def generate_test_data(sizes):
         en_size = size - ru_size
         
         # Генерируем чистые данные
-        ru_data = ru_gen.generate_clean_clients_list(ru_size, fields)
-        en_data = en_gen.generate_clean_clients_list(en_size, fields)
+        ru_data = ru_gen.generate_clean_records_list(ru_size, fields)
+        en_data = en_gen.generate_clean_records_list(en_size, fields)
         
         # Создаем искаженные данные для имитации реальных сценариев
         ru_data_distorted = ru_gen.apply_distortions(ru_data, fields)
@@ -172,7 +172,7 @@ def build_match_config(config_dict):
     # Создаем конфигурацию транслитерации
     transliteration_config = TransliterationConfig(
         enabled=config_dict['transliteration_enabled'],
-        standard="Паспортная транслитерация",
+        standard="Паспортная",
         threshold=0.7,
         auto_detect=True,
         normalize_names=True

@@ -32,7 +32,8 @@ fuzzy_matching/
 │   ├── simple_example.py             # Простой пример
 │   ├── transliteration_example.py    # Пример с транслитерацией
 │   ├── algorithm_comparison_example.py # Сравнение алгоритмов
-│   └── domain_specific_example.py    # Предметно-ориентированные алгоритмы
+│   ├── domain_specific_example.py    # Предметно-ориентированные алгоритмы
+│   └── demo_usage.py                 # Демонстрация всех возможностей библиотеки
 │
 ├── tests/              # Тесты
 │   ├── benchmark_test.py     # Тест производительности
@@ -41,6 +42,7 @@ fuzzy_matching/
 ├── results/            # Директория для результатов
 │   └── reports/        # Отчеты по тестам производительности
 │
+├── process_data.py     # Утилита командной строки для работы с данными
 └── __main__.py         # Точка входа для запуска из командной строки
 ```
 
@@ -62,7 +64,7 @@ from fuzzy_matching.core.match_config_classes import (
 # Создать конфигурацию с транслитерацией
 transliteration_config = TransliterationConfig(
     enabled=True,
-    standard="Паспортная транслитерация",
+    standard="Паспортная",
     threshold=0.7
 )
 
@@ -110,6 +112,29 @@ python -m fuzzy_matching simple      # Простой пример
 python -m fuzzy_matching translit    # Пример с транслитерацией
 python -m fuzzy_matching algorithms  # Сравнение алгоритмов
 python -m fuzzy_matching domain      # Предметно-ориентированные алгоритмы
+python -m fuzzy_matching.examples.demo_usage  # Полная демонстрация возможностей
+```
+
+### Утилита командной строки
+
+Библиотека включает утилиту командной строки `process_data.py` для обработки данных:
+
+```bash
+# Сопоставление данных из CSV файлов
+python process_data.py --mode match \
+    --input1 dataset1.csv --format1 csv \
+    --input2 dataset2.csv --format2 csv \
+    --output-matches matches.json \
+    --output-consolidated consolidated.json \
+    --threshold 0.8 \
+    --block-field Фамилия \
+    --domain person
+
+# Транслитерация данных из JSON файла
+python process_data.py --mode transliterate \
+    --input1 russian_names.json --format1 json \
+    --target-lang en \
+    --output-consolidated english_names.json
 ```
 
 ## Тестирование производительности

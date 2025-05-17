@@ -1,0 +1,487 @@
+#!/usr/bin/env python
+"""
+Демонстрационный скрипт для библиотеки fuzzy_matching.
+
+Этот скрипт показывает основные возможности библиотеки на практических примерах:
+1. Генерация тестовых данных
+2. Базовое сопоставление данных
+3. Сопоставление с транслитерацией
+4. Использование предметно-ориентированных алгоритмов
+5. Загрузка и сохранение данных из/в CSV/JSON
+
+Запуск:
+    python -m fuzzy_matching.examples.demo_usage
+"""
+
+import os
+import json
+import pandas as pd
+from prettytable import PrettyTable
+
+from fuzzy_matching.core.data_matcher import DataMatcher
+from fuzzy_matching.core.match_config_classes import (
+    MatchConfig, MatchFieldConfig, TransliterationConfig,
+    FuzzyAlgorithm, DomainSpecificAlgorithm
+)
+from fuzzy_matching.utils.data_generator import DataGenerator, Language
+
+
+def print_table(data, limit=10):
+    """
+    Выводит данные в виде форматированной таблицы.
+    
+    :param data: список словарей с данными
+    :param limit: максимальное количество строк для отображения
+    """
+    if not data:
+        print("Нет данных для отображения")
+        return
+
+    table = PrettyTable()
+    table.field_names = data[0].keys()
+    for row in data[:limit]:
+        table.add_row(row.values())
+
+    table.align = 'l'
+    print(table)
+
+
+def print_matches(matches, limit=5):
+    """
+    Выводит результаты совпадений в виде таблицы.
+    
+    :param matches: список найденных совпадений
+    :param limit: максимальное количество строк для отображения
+    """
+    if not matches:
+        print("Совпадений не найдено")
+        return
+        
+    table = PrettyTable()
+    table.field_names = ["Запись 1", "Запись 2", "Совпадение"]
+    
+    for match in matches[:limit]:
+        rec1 = " ".join(match["Запись 1"])
+        rec2 = " ".join(match["Запись 2"])
+        score = f"{match['Совпадение'][0]:.2f}"
+        table.add_row([rec1, rec2, score])
+    
+    table.align["Запись 1"] = "l"
+    table.align["Запись 2"] = "l"
+    table.align["Совпадение"] = "r"
+    
+    print(f"\nНайдено совпадений: {len(matches)}")
+    print(table)
+
+
+def demo_generate_data():
+    """
+    Демонстрирует генерацию тестовых данных с различными настройками.
+    """
+    print("\n===== ГЕНЕРАЦИЯ ТЕСТОВЫХ ДАННЫХ =====\n")
+    
+    # Настройки генератора данных
+    probabilities = {
+        'double_letter': 0.2,  # Вероятность дублирования буквы
+        'change_letter': 0.3,  # Вероятность замены буквы
+        'change_name': 0.1,    # Вероятность полной замены имени
+        'change_name_domain': 0.2,  # Вероятность замены домена в email
+        'double_number': 0.2,  # Вероятность дублирования цифры
+        'suffix_addition': 0.1  # Вероятность добавления суффикса
+    }
+    
+    print("1. Генерация русских данных:")
+    generator_ru = DataGenerator(language=Language.RUS, probabilities=probabilities)
+    fields = ['Фамилия', 'Имя', 'Отчество', 'email', 'Телефон']
+    
+    # Генерация чистых данных
+    clean_data = generator_ru.generate_clean_records_list(10, fields)
+    print("\nЧистые данные:")
+    print_table(clean_data, 5)
+    
+    # Генерация пары наборов данных (оригинальный и искаженный)
+    original_data, variant_data = generator_ru.generate_records_pair(10, fields)
+    print("\nОригинальные данные:")
+    print_table(original_data, 3)
+    print("\nИскаженные данные:")
+    print_table(variant_data, 3)
+    
+    print("\n2. Генерация английских данных:")
+    generator_en = DataGenerator(language=Language.ENG, probabilities=probabilities)
+    fields_en = ['Last Name', 'First Name', 'Middle Name', 'email', 'Phone']
+    
+    en_data = generator_en.generate_clean_records_list(5, fields_en)
+    print("\nАнглийские данные:")
+    print_table(en_data)
+    
+    # Сохранение данных в файлы
+    if not os.path.exists('demo_data'):
+        os.makedirs('demo_data')
+    
+    generator_ru.save_to_json(original_data, 'demo_data/original_ru.json')
+    generator_ru.save_to_json(variant_data, 'demo_data/variant_ru.json')
+    generator_ru.save_to_csv(original_data, 'demo_data/original_ru.csv')
+    generator_ru.save_to_csv(variant_data, 'demo_data/variant_ru.csv')
+    
+    print("\nДанные сохранены в директорию 'demo_data'")
+    
+    return original_data, variant_data
+
+
+def demo_basic_matching(original_data, variant_data):
+    """
+    Демонстрирует базовое сопоставление данных.
+    
+    :param original_data: оригинальный набор данных
+    :param variant_data: искаженный набор данных
+    """
+    print("\n===== БАЗОВОЕ СОПОСТАВЛЕНИЕ ДАННЫХ =====\n")
+    
+    # Создаем конфигурацию для сопоставления
+    match_config = MatchConfig(
+        fields=[
+            MatchFieldConfig(field='Фамилия', weight=0.4),
+            MatchFieldConfig(field='Имя', weight=0.3),
+            MatchFieldConfig(field='Отчество', weight=0.2),
+            MatchFieldConfig(field='email', weight=0.1)
+        ],
+        length_weight=0.01,  # Вес разницы в длине строк
+        threshold=0.7,       # Порог схожести для сопоставления
+        block_field='Фамилия',  # Поле для блокировки (ускорение)
+        sort_before_match=True  # Сортировка данных перед сопоставлением
+    )
+    
+    # Создаем экземпляр DataMatcher
+    matcher = DataMatcher(config=match_config)
+    
+    # Выполняем сопоставление
+    matches, consolidated = matcher.match_and_consolidate(original_data, variant_data)
+    
+    # Выводим результаты
+    print_matches(matches)
+    
+    print("\nКонсолидированные данные:")
+    print_table(consolidated)
+    
+    # Сохраняем результаты
+    matcher.save_matches_to_json(matches, 'demo_data/basic_matches.json')
+    matcher.save_consolidated_to_json(consolidated, 'demo_data/basic_consolidated.json')
+    
+    print("\nРезультаты сохранены в директорию 'demo_data'")
+    
+    return matcher, matches, consolidated
+
+
+def demo_transliteration():
+    """
+    Демонстрирует сопоставление данных с транслитерацией.
+    """
+    print("\n===== СОПОСТАВЛЕНИЕ С ТРАНСЛИТЕРАЦИЕЙ =====\n")
+    
+    # Создаем тестовые данные на разных языках
+    russian_data = [
+        {
+            'id': 'ru_1',
+            'Фамилия': 'Иванов',
+            'Имя': 'Александр',
+            'Отчество': 'Сергеевич',
+            'email': 'ivanov@example.ru'
+        },
+        {
+            'id': 'ru_2',
+            'Фамилия': 'Петров',
+            'Имя': 'Михаил',
+            'Отчество': 'Иванович',
+            'email': 'petrov@example.ru'
+        },
+        {
+            'id': 'ru_3',
+            'Фамилия': 'Сидорова',
+            'Имя': 'Елена',
+            'Отчество': 'Александровна',
+            'email': 'sidorova@example.ru'
+        }
+    ]
+    
+    english_data = [
+        {
+            'id': 'en_1',
+            'Фамилия': 'Ivanov',
+            'Имя': 'Alexander',  # Английский вариант имени
+            'Отчество': 'Sergeevich',  # Транслитерированное отчество
+            'email': 'ivanov@example.com'
+        },
+        {
+            'id': 'en_2',
+            'Фамилия': 'Petrov',
+            'Имя': 'Michael',  # Английский эквивалент имени
+            'Отчество': 'Ivanovich',  # Транслитерированное отчество
+            'email': 'petrov@example.com'
+        },
+        {
+            'id': 'en_3',
+            'Фамилия': 'Sydorova',  # Другой вариант транслитерации
+            'Имя': 'Elena',
+            'Отчество': 'Aleksandrovna',  # Другой вариант транслитерации
+            'email': 'sidorova@example.com'
+        }
+    ]
+    
+    print("Данные на русском:")
+    print_table(russian_data)
+    
+    print("\nДанные на английском:")
+    print_table(english_data)
+    
+    # Настройка конфигурации с транслитерацией
+    transliteration_config = TransliterationConfig(
+        enabled=True,
+        standard="Паспортная",  # Стандарт транслитерации
+        threshold=0.7,          # Порог схожести для транслитерации
+        auto_detect=True,       # Автоопределение языка
+        normalize_names=True    # Нормализация имен
+    )
+    
+    match_config = MatchConfig(
+        fields=[
+            MatchFieldConfig(field='Фамилия', weight=0.4, transliterate=True),
+            MatchFieldConfig(field='Имя', weight=0.3, transliterate=True),
+            MatchFieldConfig(field='Отчество', weight=0.2, transliterate=True),
+            MatchFieldConfig(field='email', weight=0.1, transliterate=False)
+        ],
+        threshold=0.7,
+        transliteration=transliteration_config
+    )
+    
+    # Выполняем сопоставление
+    matcher = DataMatcher(config=match_config)
+    matches, consolidated = matcher.match_and_consolidate(russian_data, english_data)
+    
+    # Выводим результаты
+    print("\nРезультаты сопоставления с транслитерацией:")
+    print_matches(matches)
+    
+    print("\nКонсолидированные данные:")
+    print_table(consolidated)
+    
+    # Демонстрация транслитерации данных
+    print("\nТранслитерация русских данных на английский:")
+    transliterated_en = matcher.translate_data(russian_data, target_lang='en')
+    print_table(transliterated_en)
+    
+    print("\nТранслитерация английских данных на русский:")
+    transliterated_ru = matcher.translate_data(english_data, target_lang='ru')
+    print_table(transliterated_ru)
+    
+    return matcher, matches, consolidated
+
+
+def demo_domain_specific():
+    """
+    Демонстрирует использование предметно-ориентированных алгоритмов.
+    """
+    print("\n===== ПРЕДМЕТНО-ОРИЕНТИРОВАННЫЕ АЛГОРИТМЫ =====\n")
+    
+    # Данные о людях
+    person_data1 = [
+        {'id': 1, 'Фамилия': 'Иванов', 'Имя': 'Иван', 'Отчество': 'Иванович', 'email': 'ivanov@example.com'},
+        {'id': 2, 'Фамилия': 'Петров', 'Имя': 'Петр', 'Отчество': 'Петрович', 'email': 'petrov@example.com'}
+    ]
+    
+    person_data2 = [
+        {'id': 'a', 'Фамилия': 'Иванов', 'Имя': 'Иван', 'Отчество': 'Иваныч', 'email': 'i.ivanov@example.com'},
+        {'id': 'b', 'Фамилия': 'Петров', 'Имя': 'Петр', 'Отчество': 'Петровичь', 'email': 'p.petrov@example.com'}
+    ]
+    
+    # Данные о товарах
+    product_data1 = [
+        {'id': 1, 'Название': 'Смартфон Samsung Galaxy S21', 'Категория': 'Электроника', 'Цена': 59999},
+        {'id': 2, 'Название': 'Ноутбук Apple MacBook Pro 13"', 'Категория': 'Компьютеры', 'Цена': 129999}
+    ]
+    
+    product_data2 = [
+        {'id': 'a', 'Название': 'Samsung Galaxy S21 5G', 'Категория': 'Смартфоны', 'Цена': 61999},
+        {'id': 'b', 'Название': 'MacBook Pro 13 2020', 'Категория': 'Ноутбуки', 'Цена': 128999}
+    ]
+    
+    # Данные о компаниях
+    company_data1 = [
+        {'id': 1, 'Название': 'ООО "Инновационные технологии"', 'Адрес': 'г. Москва, ул. Ленина, 10', 'ИНН': '7701123456'},
+        {'id': 2, 'Название': 'АО "ТехноСервис"', 'Адрес': 'г. Санкт-Петербург, пр. Невский, 100', 'ИНН': '7801234567'}
+    ]
+    
+    company_data2 = [
+        {'id': 'a', 'Название': 'Инновационные технологии ООО', 'Адрес': 'Москва, Ленина 10', 'ИНН': '7701123456'},
+        {'id': 'b', 'Название': 'ТехноСервис', 'Адрес': 'СПб, Невский проспект, 100', 'ИНН': '7801234567'}
+    ]
+    
+    # Демонстрация для персональных данных
+    print("1. Сопоставление персональных данных:")
+    person_config = MatchConfig(
+        fields=[
+            MatchFieldConfig(field='Фамилия', weight=0.4),
+            MatchFieldConfig(field='Имя', weight=0.3),
+            MatchFieldConfig(field='Отчество', weight=0.2),
+            MatchFieldConfig(field='email', weight=0.1)
+        ],
+        threshold=0.7,
+        domain_algorithm=DomainSpecificAlgorithm.PERSON_DATA
+    )
+    
+    person_matcher = DataMatcher(config=person_config)
+    person_matches, _ = person_matcher.match_and_consolidate(person_data1, person_data2)
+    print_matches(person_matches)
+    
+    # Демонстрация для товаров
+    print("\n2. Сопоставление данных о товарах:")
+    product_config = MatchConfig(
+        fields=[
+            MatchFieldConfig(field='Название', weight=0.8),
+            MatchFieldConfig(field='Категория', weight=0.2)
+        ],
+        threshold=0.7,
+        domain_algorithm=DomainSpecificAlgorithm.PRODUCT_DATA
+    )
+    
+    product_matcher = DataMatcher(config=product_config)
+    product_matches, _ = product_matcher.match_and_consolidate(product_data1, product_data2)
+    print_matches(product_matches)
+    
+    # Демонстрация для компаний
+    print("\n3. Сопоставление данных о компаниях:")
+    company_config = MatchConfig(
+        fields=[
+            MatchFieldConfig(field='Название', weight=0.6),
+            MatchFieldConfig(field='Адрес', weight=0.2),
+            MatchFieldConfig(field='ИНН', weight=0.2)
+        ],
+        threshold=0.7,
+        domain_algorithm=DomainSpecificAlgorithm.COMPANY_DATA
+    )
+    
+    company_matcher = DataMatcher(config=company_config)
+    company_matches, _ = company_matcher.match_and_consolidate(company_data1, company_data2)
+    print_matches(company_matches)
+
+
+def demo_file_operations():
+    """
+    Демонстрирует операции с файлами (загрузка, сохранение).
+    """
+    print("\n===== ОПЕРАЦИИ С ФАЙЛАМИ =====\n")
+    
+    # Создаем тестовые данные
+    data = [
+        {
+            'id': 1,
+            'Фамилия': 'Иванов',
+            'Имя': 'Иван',
+            'Отчество': 'Иванович',
+            'email': 'ivanov@example.com',
+            'Телефон': '+7 (999) 123-45-67'
+        },
+        {
+            'id': 2,
+            'Фамилия': 'Петров',
+            'Имя': 'Петр',
+            'Отчество': 'Петрович',
+            'email': 'petrov@example.com',
+            'Телефон': '+7 (999) 765-43-21'
+        },
+        {
+            'id': 3,
+            'Фамилия': 'Сидорова',
+            'Имя': 'Елена',
+            'Отчество': 'Александровна',
+            'email': 'sidorova@example.com',
+            'Телефон': '+7 (999) 111-22-33'
+        }
+    ]
+    
+    # Создаем директорию для файлов, если её нет
+    if not os.path.exists('demo_data'):
+        os.makedirs('demo_data')
+    
+    # Сохраняем данные в JSON
+    json_path = 'demo_data/test_data.json'
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"Данные сохранены в JSON: {json_path}")
+    
+    # Сохраняем данные в CSV
+    csv_path = 'demo_data/test_data.csv'
+    pd.DataFrame(data).to_csv(csv_path, index=False, encoding='utf-8')
+    print(f"Данные сохранены в CSV: {csv_path}")
+    
+    # Создаем экземпляр DataMatcher с пустой конфигурацией
+    match_config = MatchConfig(
+        fields=[
+            MatchFieldConfig(field='Фамилия', weight=0.4),
+            MatchFieldConfig(field='Имя', weight=0.3),
+            MatchFieldConfig(field='Отчество', weight=0.2),
+            MatchFieldConfig(field='email', weight=0.1)
+        ],
+        threshold=0.7
+    )
+    matcher = DataMatcher(config=match_config)
+    
+    # Определяем соответствие полей
+    name_fields = {
+        'Фамилия': 'Фамилия',
+        'Имя': 'Имя',
+        'Отчество': 'Отчество',
+        'email': 'email',
+        'Телефон': 'Телефон',
+        'id': 'id'
+    }
+    
+    # Загружаем данные из JSON
+    json_data = matcher.load_from_json(json_path, name_fields)
+    print("\nДанные, загруженные из JSON:")
+    print_table(json_data)
+    
+    # Загружаем данные из CSV
+    csv_data = matcher.load_from_csv(csv_path, name_fields)
+    print("\nДанные, загруженные из CSV:")
+    print_table(csv_data)
+    
+    # Демонстрация сопоставления полей при загрузке
+    print("\nЗагрузка с сопоставлением полей:")
+    field_mapping = {
+        'id': 'ID',
+        'Фамилия': 'LastName',
+        'Имя': 'FirstName',
+        'Отчество': 'MiddleName',
+        'email': 'Email',
+        'Телефон': 'Phone'
+    }
+    
+    mapped_data = matcher.load_from_json(json_path, field_mapping)
+    print("\nДанные с переименованными полями:")
+    print_table(mapped_data)
+
+
+def main():
+    print("===== ДЕМОНСТРАЦИЯ БИБЛИОТЕКИ FUZZY MATCHING =====\n")
+    
+    # Генерация тестовых данных
+    original_data, variant_data = demo_generate_data()
+    
+    # Базовое сопоставление
+    demo_basic_matching(original_data, variant_data)
+    
+    # Сопоставление с транслитерацией
+    demo_transliteration()
+    
+    # Предметно-ориентированные алгоритмы
+    demo_domain_specific()
+    
+    # Операции с файлами
+    demo_file_operations()
+    
+    print("\n===== ЗАВЕРШЕНИЕ ДЕМОНСТРАЦИИ =====")
+    print("\nВсе результаты сохранены в директории 'demo_data'")
+
+
+if __name__ == "__main__":
+    main() 
