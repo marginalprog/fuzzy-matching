@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Tuple, Any
 from rapidfuzz import fuzz
 from collections import defaultdict
 
-from fuzzy_matching.core.match_config_classes import MatchConfig, TransliterationConfig
+from fuzzy_matching.core.match_config_classes import MatchConfig, TransliterationConfig, FuzzyAlgorithm
 import fuzzy_matching.utils.transliteration_utils as translit
 
 
@@ -22,25 +22,28 @@ class DataMatcher:
     - Консолидация совпадающих записей
     - Сохранение результатов в разных форматах
     """
-    def __init__(self, config: MatchConfig = None):
+    def __init__(self, config: MatchConfig):
         """
         Инициализирует экземпляр класса DataMatcher.
         
         :param config: объект конфигурации MatchConfig, содержащий настройки для сопоставления
         """
-        # Поля для блокировки (первый символ) и дополнительные поля группировки
-        self.block_field = config.block_field
-        self.group_fields = config.group_fields or []
-        self.sort_before_match = config.sort_before_match
-        # Поля для фаззи-матчинга
-        self.match_fields = [f.field for f in config.fields]
-        self.weights = {f.field: f.weight for f in config.fields}
-        self.weights['length'] = config.length_weight
-        self.threshold = config.threshold
+        self.config = config
         
-        # Настройки транслитерации
+        # Создаем удобные атрибуты для часто используемых параметров
+        self.threshold = config.threshold
+        self.block_field = config.block_field
         self.transliteration = config.transliteration
-        self.transliterate_fields = {f.field: f.transliterate for f in config.fields}
+        self.sort_before_match = config.sort_before_match
+        
+        # Создаем словарь весов полей для быстрого доступа
+        self.weights = {field_config.field: field_config.weight for field_config in config.fields}
+        
+        # Список полей для сопоставления
+        self.match_fields = [field_config.field for field_config in config.fields]
+        
+        # Словарь полей, для которых применяется транслитерация
+        self.transliterate_fields = {field_config.field: field_config.transliterate for field_config in config.fields}
         
         # Если включена транслитерация, получаем соответствующий стандарт
         if self.transliteration.enabled:
@@ -149,31 +152,67 @@ class DataMatcher:
             writer.writeheader()
             writer.writerows(consolidated)
 
-    @staticmethod
-    def _sort_data(clients, sort_keys):
+    def _sort_data(self, records):
         """
-        Сортирует входные данные по указанным ключам.
+        Сортирует список записей по полям сопоставления или заданному полю сортировки.
         
-        :param clients: список записей для сортировки
-        :param sort_keys: список ключей для сортировки
+        :param records: список записей для сортировки
         :return: отсортированный список записей
         """
-        return sorted(clients, key=lambda x: tuple(x.get(k, '') for k in sort_keys))
+        if self.config.sort_field:
+            # Если задано конкретное поле для сортировки, используем его
+            sort_keys = [self.config.sort_field]
+        else:
+            # Иначе сортируем по всем полям сопоставления
+            sort_keys = [field_config.field for field_config in self.config.fields]
+            
+        return sorted(records, key=lambda x: tuple(x.get(k, '') for k in sort_keys))
 
-    @staticmethod
-    def _weighted_average(values, weights):
+    def _weighted_average(self, record1, record2):
         """
-        Вычисляет взвешенное среднее значение для набора значений.
+        Вычисляет взвешенную среднюю схожесть между двумя записями
         
-        :param values: словарь значений
-        :param weights: словарь весов для каждого значения
-        :return: взвешенное среднее значение
+        :param record1: первая запись
+        :param record2: вторая запись
+        :return: кортеж (общая схожесть, список схожестей по полям)
         """
-        total_weight = sum(weights.get(key, 0) for key in values)
-        if total_weight == 0:
-            return 0
-        weighted_sum = sum(values[key] * weights.get(key, 0) for key in values)
-        return weighted_sum / total_weight
+        similarities = []
+        weights = []
+        field_sims = []
+        
+        # Проходим по всем полям конфигурации
+        for field_config in self.config.fields:
+            field = field_config.field
+            weight = field_config.weight
+            
+            # Получаем значения полей
+            value1 = record1.get(field, "")
+            value2 = record2.get(field, "")
+            
+            # Если задана транслитерация, обрабатываем поля
+            if field_config.transliterate and self.config.transliteration.enabled:
+                value1_trans, value2_trans, _ = self._process_transliteration(value1, value2)
+                value1, value2 = value1_trans, value2_trans
+            
+            # Вычисляем схожесть с учетом выбранного алгоритма для данного поля
+            similarity = self._get_similarity(value1, value2, field_config.fuzzy_algorithm, field_config.field_type)
+            
+            field_sims.append((field, value1, value2, similarity))
+            similarities.append(similarity)
+            weights.append(weight)
+        
+        # Если нет полей для сравнения, возвращаем 0
+        if not similarities:
+            return 0, []
+        
+        # Вычисляем взвешенную среднюю схожесть
+        total_weight = sum(weights)
+        weighted_sum = sum(sim * weight for sim, weight in zip(similarities, weights))
+        
+        # Предотвращаем деление на ноль
+        avg_similarity = weighted_sum / total_weight if total_weight > 0 else 0
+        
+        return avg_similarity, field_sims
 
     def _block_by_fields(self, recs):
         """
@@ -182,14 +221,14 @@ class DataMatcher:
         """
         if self.block_field is None:
             return {'ALL': recs}
-        if self.group_fields:
+        if self.config.group_fields:
             blocks = defaultdict(lambda: defaultdict(list))
             for rec in recs:
                 val = rec.get(self.block_field, '')
                 if not val:
                     continue
                 key = val[0].upper()
-                group_key = tuple(rec.get(f, '') for f in self.group_fields)
+                group_key = tuple(rec.get(f, '') for f in self.config.group_fields)
                 blocks[key][group_key].append(rec)
         else:
             blocks = defaultdict(list)
@@ -201,150 +240,163 @@ class DataMatcher:
                 blocks[key].append(rec)
         return blocks
 
-    def select_cleaner_client(self, client1, client2):
+    def select_cleaner_record(self, record1, record2):
         """
         Выбирает запись с меньшим 'шумом' (спецсимволы + длина).
         """
-        def cleanliness_score(client):
-            combined = ' '.join(str(client.get(f, '')) for f in self.match_fields)
+        def cleanliness_score(record):
+            combined = ' '.join(str(record.get(f, '')) for f in self.match_fields)
             special_chars = len(re.findall(r'[^a-zA-Zа-яА-Я0-9\s]', combined))
             length = len(combined)
             return special_chars + length * self.weights.get('length', 0)
 
-        score1 = cleanliness_score(client1)
-        score2 = cleanliness_score(client2)
+        score1 = cleanliness_score(record1)
+        score2 = cleanliness_score(record2)
         if score1 < score2:
-            return client1
+            return record1
         elif score2 < score1:
-            return client2
+            return record2
         # Если равны, выбираем более короткую запись
-        length1 = sum(len(str(client1.get(f, ''))) for f in self.match_fields)
-        length2 = sum(len(str(client2.get(f, ''))) for f in self.match_fields)
-        return client1 if length1 <= length2 else client2
+        length1 = sum(len(str(record1.get(f, ''))) for f in self.match_fields)
+        length2 = sum(len(str(record2.get(f, ''))) for f in self.match_fields)
+        return record1 if length1 <= length2 else record2
     
-    def _process_transliteration(self, value1, value2, field):
+    def _process_transliteration(self, value1, value2, field=None):
         """
-        Обрабатывает транслитерацию для двух значений поля.
+        Обрабатывает пару строк с транслитерацией, автоматически определяет язык и
+        выбирает оптимальное сопоставление.
         
-        :param value1: первое значение
-        :param value2: второе значение
-        :param field: имя поля
-        :return: кортеж (обработанное_значение1, обработанное_значение2, коэффициент_схожести)
+        :param value1: первая строка
+        :param value2: вторая строка
+        :param field: имя поля (опциональное)
+        :return: кортеж (преобразованная_строка1, преобразованная_строка2, схожесть)
         """
-        if not self.transliteration.enabled or not self.transliterate_fields.get(field, False):
-            # Если транслитерация отключена или не нужна для этого поля
-            return value1, value2, fuzz.token_sort_ratio(value1, value2)
+        if not value1 or not value2:
+            return value1, value2, 0
         
-        # Определяем язык каждого значения
+        # Определяем язык строк
         lang1 = translit.detect_language(value1)
         lang2 = translit.detect_language(value2)
         
-        # Нормализуем имена, если настроено
+        # Нормализуем имена, если это указано в настройках
         if self.transliteration.normalize_names:
             if lang1 == 'ru':
                 value1 = translit.normalize_name_ru(value1)
-            elif lang1 == 'en':
+            else:
                 value1 = translit.normalize_name_en(value1)
                 
             if lang2 == 'ru':
                 value2 = translit.normalize_name_ru(value2)
-            elif lang2 == 'en':
+            else:
                 value2 = translit.normalize_name_en(value2)
         
-        # Определяем наилучший вариант сопоставления
-        similarity_original = fuzz.token_sort_ratio(value1, value2)
+        # Получаем стандарт транслитерации
+        standard_name = self.transliteration.standard
+        standard = translit.get_standard_by_name(standard_name)
+        if not standard:
+            standard = translit.PASSPORT_STANDARD  # По умолчанию используем паспортный стандарт
         
-        # Русский --> Английский
-        if lang1 == 'ru' and lang2 == 'en':
-            value1_trans = translit.transliterate_ru_to_en(value1, self.transliteration_standard)
-            similarity_trans = fuzz.token_sort_ratio(value1_trans, value2)
+        # Если языки разные, выполняем транслитерацию
+        if lang1 != lang2:
+            # Выбираем направление транслитерации и обрабатываем строки
+            if lang1 == 'ru' and lang2 == 'en':
+                # Вариант 1: транслитерируем value1 с русского на английский
+                value1_en = translit.transliterate_ru_to_en(value1, standard)
+                similarity1 = fuzz.token_sort_ratio(value1_en.lower(), value2.lower()) / 100
+                
+                # Вариант 2: транслитерируем value2 с английского на русский
+                value2_ru = translit.transliterate_en_to_ru(value2, standard)
+                similarity2 = fuzz.token_sort_ratio(value1.lower(), value2_ru.lower()) / 100
+                
+                # Выбираем лучший вариант
+                if similarity1 >= similarity2:
+                    return value1_en, value2, similarity1
+                else:
+                    return value1, value2_ru, similarity2
             
-            if similarity_trans > similarity_original:
-                return value1_trans, value2, similarity_trans
+            elif lang1 == 'en' and lang2 == 'ru':
+                # Вариант 1: транслитерируем value1 с английского на русский
+                value1_ru = translit.transliterate_en_to_ru(value1, standard)
+                similarity1 = fuzz.token_sort_ratio(value1_ru.lower(), value2.lower()) / 100
+                
+                # Вариант 2: транслитерируем value2 с русского на английский
+                value2_en = translit.transliterate_ru_to_en(value2, standard)
+                similarity2 = fuzz.token_sort_ratio(value1.lower(), value2_en.lower()) / 100
+                
+                # Выбираем лучший вариант
+                if similarity1 >= similarity2:
+                    return value1_ru, value2, similarity1
+                else:
+                    return value1, value2_en, similarity2
         
-        # Английский --> Русский
-        elif lang1 == 'en' and lang2 == 'ru':
-            value1_trans = translit.transliterate_en_to_ru(value1, self.transliteration_standard)
-            similarity_trans = fuzz.token_sort_ratio(value1_trans, value2)
-            
-            if similarity_trans > similarity_original:
-                return value1_trans, value2, similarity_trans
-        
-        # Оба русские или оба английские - транслитерация не нужна
+        # Если языки одинаковые или не удалось определить, возвращаем оригинальные строки
+        similarity_original = fuzz.token_sort_ratio(value1.lower(), value2.lower()) / 100
         return value1, value2, similarity_original
             
-    def match_and_consolidate(self, list1, list2):
+    def match_and_consolidate(self, data1, data2):
         """
-        Выполняет сопоставление двух списков записей и консолидирует результаты.
+        Сопоставляет два набора данных и консолидирует совпадения
         
-        :param list1: первый список записей для сопоставления
-        :param list2: второй список записей для сопоставления
-        :return: кортеж (список совпадений, список консолидированных записей)
+        :param data1: первый набор данных
+        :param data2: второй набор данных
+        :return: кортеж (список совпадений, консолидированные данные)
         """
-        if self.sort_before_match:
-            list1 = self._sort_data(list1, self.match_fields)
-            list2 = self._sort_data(list2, self.match_fields)
-
-        blocks1 = self._block_by_fields(list1)
-        blocks2 = self._block_by_fields(list2)
-
-        consolidated = []
         matches = []
-        matched_1 = set()
-        matched_2 = set()
-
-        def process_block(group1, group2):
-            for client1 in group1:
-                id1 = client1.get('id')
-                if id1 in matched_1:
-                    continue
-                for client2 in group2:
-                    id2 = client2.get('id')
-                    if id2 in matched_2:
-                        continue
-                    values = {}
-                    for field in self.match_fields:
-                        v1 = client1.get(field, '')
-                        v2 = client2.get(field, '')
-                        if v1 and v2:
-                            if self.transliteration.enabled and self.transliterate_fields.get(field, False):
-                                # Применяем транслитерацию с учетом языка
-                                _, _, similarity = self._process_transliteration(v1, v2, field)
-                                values[field] = similarity
-                            else:
-                                # Обычное сопоставление без транслитерации
-                                values[field] = fuzz.token_sort_ratio(v1, v2)
-
-                    similarity = self._weighted_average(values, self.weights)/100
-
-                    if similarity >= self.threshold:
-                        matches.append({
-                            'ID 1': id1,
-                            'ID 2': id2,
-                            'Запись 1': [client1.get(f, '') for f in self.match_fields],
-                            'Запись 2': [client2.get(f, '') for f in self.match_fields],
-                            'Совпадение': [similarity]
-                        })
-                        matched_1.add(id1)
-                        matched_2.add(id2)
-                        cleaner = self.select_cleaner_client(client1, client2)
-                        consolidated.append(cleaner)
-                        break
-
-        for key in blocks1:
-            g1 = blocks1[key]
-            g2 = blocks2.get(key, {})
-            if isinstance(g1, dict):
-                for subkey in g1:
-                    process_block(g1[subkey], g2.get(subkey, []) if isinstance(g2, dict) else [])
-            else:
-                process_block(g1, g2 if isinstance(g2, list) else [])
-
-        # Добавляем несопоставленные записи
-        unmatched1 = [c for c in list1 if c['id'] not in matched_1]
-        unmatched2 = [c for c in list2 if c['id'] not in matched_2]
-        consolidated.extend(unmatched1 + unmatched2)
-
+        consolidated = []
+        
+        # Копируем данные, чтобы не изменять оригиналы
+        data1 = data1.copy()
+        data2 = data2.copy()
+        
+        # Сортируем данные, если это указано в конфигурации
+        if self.sort_before_match:
+            data1 = self._sort_data(data1)
+            data2 = self._sort_data(data2)
+        
+        # Если используется блокировка, группируем данные по блокирующему полю
+        if self.block_field:
+            blocks1 = self._block_by_fields(data1)
+            blocks2 = self._block_by_fields(data2)
+            
+            # Обрабатываем каждый блок
+            for block_key in blocks1:
+                if block_key in blocks2:
+                    # Блок существует в обоих наборах данных
+                    block_matches = self.process_block(blocks1[block_key], blocks2[block_key])
+                    matches.extend(block_matches)
+        else:
+            # Если блокировка не используется, обрабатываем все данные как один блок
+            matches.extend(self.process_block(data1, data2))
+        
+        # Консолидируем данные
+        if matches:
+            # Создаем множество сопоставленных записей для быстрого поиска
+            matched_ids1 = set(match["ID 1"] for match in matches)
+            matched_ids2 = set(match["ID 2"] for match in matches)
+            
+            # Добавляем сопоставленные записи
+            for match in matches:
+                record1 = next((r for r in data1 if r.get("id", "") == match["ID 1"]), None)
+                record2 = next((r for r in data2 if r.get("id", "") == match["ID 2"]), None)
+                
+                if record1 and record2:
+                    # Выбираем "лучшую" запись для консолидации
+                    consolidated_record = self.select_cleaner_record(record1, record2)
+                    consolidated.append(consolidated_record)
+            
+            # Добавляем несопоставленные записи из первого набора
+            for record in data1:
+                if record.get("id", "") not in matched_ids1:
+                    consolidated.append(record.copy())
+            
+            # Добавляем несопоставленные записи из второго набора
+            for record in data2:
+                if record.get("id", "") not in matched_ids2:
+                    consolidated.append(record.copy())
+        else:
+            # Если совпадений нет, просто объединяем оба набора
+            consolidated = data1 + data2
+        
         return matches, consolidated
     
     def translate_data(self, data_list, target_lang='ru', fields=None):
@@ -427,3 +479,98 @@ class DataMatcher:
                 best_variant = variant
                 
         return best_variant
+
+    def _get_similarity(self, str1, str2, fuzzy_algorithm=None, field_type=None):
+        """
+        Вычисляет нечеткую схожесть между двумя строками
+        с использованием выбранного алгоритма.
+        
+        :param str1: первая строка
+        :param str2: вторая строка
+        :param fuzzy_algorithm: алгоритм нечёткого сопоставления (если None, используется из конфигурации)
+        :param field_type: тип поля для выбора алгоритма из предметной области
+        :return: степень схожести (0-1)
+        """
+        # Если строки пустые или обе None, возвращаем 0
+        if (str1 is None and str2 is None) or (not str1 and not str2):
+            return 0
+        # Если одна из строк None или пустая, возвращаем 0
+        if str1 is None or str2 is None or not str1 or not str2:
+            return 0
+        
+        # Определяем алгоритм для использования
+        algorithm = fuzzy_algorithm  # Приоритет 1: явно указанный алгоритм для поля
+        
+        # Если не указан явный алгоритм, но указан тип поля и предметная область
+        if algorithm is None and field_type is not None and self.config.domain_algorithm is not None:
+            domain_algs = self.config.domain_algorithm.value
+            # Получаем алгоритм для указанного типа поля или 'default'
+            algorithm = domain_algs.get(field_type, domain_algs.get('default'))
+        
+        # Если всё еще нет алгоритма, используем общий из конфигурации
+        if algorithm is None:
+            algorithm = self.config.fuzzy_algorithm
+        
+        # Используем соответствующий алгоритм
+        if algorithm == FuzzyAlgorithm.RATIO:
+            return fuzz.ratio(str1.lower(), str2.lower()) / 100
+        elif algorithm == FuzzyAlgorithm.PARTIAL_RATIO:
+            return fuzz.partial_ratio(str1.lower(), str2.lower()) / 100
+        elif algorithm == FuzzyAlgorithm.TOKEN_SORT:
+            return fuzz.token_sort_ratio(str1.lower(), str2.lower()) / 100
+        elif algorithm == FuzzyAlgorithm.TOKEN_SET:
+            return fuzz.token_set_ratio(str1.lower(), str2.lower()) / 100
+        elif algorithm == FuzzyAlgorithm.WRatio:
+            return fuzz.WRatio(str1.lower(), str2.lower()) / 100
+        else:
+            # По умолчанию используем обычный ratio
+            return fuzz.ratio(str1.lower(), str2.lower()) / 100
+
+    def process_block(self, block1, block2):
+        """
+        Обрабатывает блоки и находит соответствия
+        
+        :param block1: первый блок данных
+        :param block2: второй блок данных
+        :return: список найденных соответствий
+        """
+        block_matches = []
+        matched_indices2 = set()  # Индексы из block2, которые уже сопоставлены
+
+        for i, record1 in enumerate(block1):
+            max_similarity = 0
+            best_match = None
+            best_j = None
+            best_field_similarities = []
+
+            for j, record2 in enumerate(block2):
+                if j in matched_indices2:
+                    continue  # Пропускаем уже сопоставленные записи из block2
+
+                # Вычисляем схожесть между записями
+                similarity, field_similarities = self._weighted_average(record1, record2)
+
+                if similarity > max_similarity:
+                    max_similarity = similarity
+                    best_match = record2
+                    best_j = j
+                    best_field_similarities = field_similarities
+
+            # Добавляем соответствие только если оно выше порога
+            if max_similarity >= self.threshold and best_match:
+                # Форматируем для вывода
+                record1_values = [record1.get(field_config.field, "") for field_config in self.config.fields]
+                record2_values = [best_match.get(field_config.field, "") for field_config in self.config.fields]
+
+                match_data = {
+                    "ID 1": record1.get("id", ""),
+                    "ID 2": best_match.get("id", ""),
+                    "Запись 1": record1_values,
+                    "Запись 2": record2_values,
+                    "Совпадение": (max_similarity, best_field_similarities)
+                }
+
+                block_matches.append(match_data)
+                matched_indices2.add(best_j)  # Помечаем запись как уже сопоставленную
+
+        return block_matches

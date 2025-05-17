@@ -278,15 +278,15 @@ class DataGenerator:
                 return name + random.choice(english_suffixes), False
         return name, False
 
-    """Генерация списка клиентов"""
-    def generate_clean_clients_list(self, num_clients, fields=None, use_patronymic_for_english=None):
+    """Генерация списка записей"""
+    def generate_clean_records_list(self, num_records, fields=None, use_patronymic_for_english=None):
         """
-        Генерирует список клиентов без искажений.
+        Генерирует список записей без искажений.
         
-        :param num_clients: количество клиентов для генерации
+        :param num_records: количество записей для генерации
         :param fields: список полей для генерации (если None, используются все поля)
         :param use_patronymic_for_english: если указано, переопределяет настройку из конструктора
-        :return: список клиентов
+        :return: список записей
         """
         if fields is None:
             fields = list(self.FIELD_NAMES.values())
@@ -294,8 +294,8 @@ class DataGenerator:
         # Используем параметр из аргумента, если он указан, иначе берем из конструктора
         use_patronymic = use_patronymic_for_english if use_patronymic_for_english is not None else self.use_patronymic_for_english
             
-        clients = []
-        for i in range(num_clients):
+        records = []
+        for i in range(num_records):
             gender = random.choice(['м', 'ж'])
             first = self.fake.first_name_male() if gender == 'м' else self.fake.first_name_female()
             last = self.fake.last_name_male() if gender == 'м' else self.fake.last_name_female()
@@ -310,70 +310,70 @@ class DataGenerator:
                 
             email = self.fake.email()
             phone = self.fake.phone_number()
-            client = {}
+            record = {}
             if self.FIELD_NAMES['last_name'] in fields:
-                client[self.FIELD_NAMES['last_name']] = last
+                record[self.FIELD_NAMES['last_name']] = last
             if self.FIELD_NAMES['first_name'] in fields:
-                client[self.FIELD_NAMES['first_name']] = first
+                record[self.FIELD_NAMES['first_name']] = first
             if self.FIELD_NAMES['middle_name'] in fields:
-                client[self.FIELD_NAMES['middle_name']] = middle
+                record[self.FIELD_NAMES['middle_name']] = middle
             if self.FIELD_NAMES['email'] in fields:
-                client[self.FIELD_NAMES['email']] = email
+                record[self.FIELD_NAMES['email']] = email
             if self.FIELD_NAMES['phone'] in fields:
-                client[self.FIELD_NAMES['phone']] = phone
-            client['Пол'] = gender
-            client['id'] = f'client_{i+1}'
-            clients.append(client)
-        return clients
+                record[self.FIELD_NAMES['phone']] = phone
+            record['Пол'] = gender
+            record['id'] = f'record_{i+1}'
+            records.append(record)
+        return records
 
-    def apply_distortions(self, clients, fields=None):
+    def apply_distortions(self, records, fields=None):
         """
-        Применяет искажения к списку клиентов.
+        Применяет искажения к списку записей.
         
-        :param clients: исходный список клиентов
+        :param records: исходный список записей
         :param fields: список полей, к которым будут применены искажения
-        :return: искаженный список клиентов
+        :return: искаженный список записей
         """
         if fields is None:
             fields = list(self.FIELD_NAMES.values())
-        distorted_clients = []
-        for client in clients:
-            distorted_client = client.copy()
+        distorted_records = []
+        for record in records:
+            distorted_record = record.copy()
             # добавляем суффикс к id, чтобы отличить вариант
-            orig_id = distorted_client['id']
-            distorted_client['id'] = f"{orig_id}_v"
+            orig_id = distorted_record['id']
+            distorted_record['id'] = f"{orig_id}_v"
 
-            gender = distorted_client.get('Пол', 'м')
+            gender = distorted_record.get('Пол', 'м')
             new_person = False
             if self.FIELD_NAMES['last_name'] in fields:
-                last_name, new_person = self.vary_name(distorted_client[self.FIELD_NAMES['last_name']], 'last', gender)
-                distorted_client[self.FIELD_NAMES['last_name']] = last_name
+                last_name, new_person = self.vary_name(distorted_record[self.FIELD_NAMES['last_name']], 'last', gender)
+                distorted_record[self.FIELD_NAMES['last_name']] = last_name
             if self.FIELD_NAMES['first_name'] in fields:
-                first_name, new_person = self.vary_name(distorted_client[self.FIELD_NAMES['first_name']], 'first', gender)
-                distorted_client[self.FIELD_NAMES['first_name']] = first_name
+                first_name, new_person = self.vary_name(distorted_record[self.FIELD_NAMES['first_name']], 'first', gender)
+                distorted_record[self.FIELD_NAMES['first_name']] = first_name
             if self.FIELD_NAMES['middle_name'] in fields:
-                middle_name, new_person = self.vary_name(distorted_client[self.FIELD_NAMES['middle_name']], 'middle', gender)
-                distorted_client[self.FIELD_NAMES['middle_name']] = middle_name
+                middle_name, new_person = self.vary_name(distorted_record[self.FIELD_NAMES['middle_name']], 'middle', gender)
+                distorted_record[self.FIELD_NAMES['middle_name']] = middle_name
             if self.FIELD_NAMES['email'] in fields:
-                email = self.vary_email(distorted_client[self.FIELD_NAMES['email']], new_person)
-                distorted_client[self.FIELD_NAMES['email']] = email
+                email = self.vary_email(distorted_record[self.FIELD_NAMES['email']], new_person)
+                distorted_record[self.FIELD_NAMES['email']] = email
             if self.FIELD_NAMES['phone'] in fields:
-                phone = self.vary_phone_number(distorted_client[self.FIELD_NAMES['phone']], new_person)
-                distorted_client[self.FIELD_NAMES['phone']] = phone
-            distorted_clients.append(distorted_client)
-        return distorted_clients
+                phone = self.vary_phone_number(distorted_record[self.FIELD_NAMES['phone']], new_person)
+                distorted_record[self.FIELD_NAMES['phone']] = phone
+            distorted_records.append(distorted_record)
+        return distorted_records
 
-    def generate_clients_pair(self, num_clients, fields=None):
+    def generate_records_pair(self, num_records, fields=None):
         """
-        Генерирует пару списков клиентов: оригинальный и искаженный.
+        Генерирует пару списков записей: оригинальный и искаженный.
         
-        :param num_clients: количество клиентов для генерации
+        :param num_records: количество записей для генерации
         :param fields: список полей для генерации
-        :return: кортеж (список оригинальных клиентов, список искаженных клиентов)
+        :return: кортеж (список оригинальных записей, список искаженных записей)
         """
-        clean_clients = self.generate_clean_clients_list(num_clients, fields)
-        distorted_clients = self.apply_distortions(clean_clients, fields)
-        return clean_clients, distorted_clients
+        clean_records = self.generate_clean_records_list(num_records, fields)
+        distorted_records = self.apply_distortions(clean_records, fields)
+        return clean_records, distorted_records
 
     def save_to_json(self, data, filename):
         """

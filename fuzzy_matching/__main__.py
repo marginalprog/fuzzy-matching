@@ -9,6 +9,8 @@
     translit - пример с транслитерацией
     benchmark - тест производительности
     advanced - расширенный тест производительности
+    algorithms - сравнение алгоритмов нечеткого сопоставления
+    domain - использование предметно-ориентированных алгоритмов
 """
 
 import sys
@@ -22,6 +24,8 @@ def print_usage():
     print("  translit   - пример с транслитерацией")
     print("  benchmark  - тест производительности")
     print("  advanced   - расширенный тест производительности")
+    print("  algorithms - сравнение алгоритмов нечеткого сопоставления")
+    print("  domain     - использование предметно-ориентированных алгоритмов")
 
 def main():
     """Основная функция для запуска примеров."""
@@ -44,6 +48,12 @@ def main():
         main()
     elif example == 'advanced':
         from fuzzy_matching.tests.advanced_benchmark import main
+        main()
+    elif example == 'algorithms':
+        from fuzzy_matching.examples.algorithm_comparison_example import main
+        main()
+    elif example == 'domain':
+        from fuzzy_matching.examples.domain_specific_example import main
         main()
     else:
         print(f"Неизвестный пример: {example}")

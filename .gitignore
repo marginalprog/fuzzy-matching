@@ -5,3 +5,7 @@ __pycache__/
 profile_data.prof
 
 benchmark_data_cache.pkl
+
+benchmark_results.csv
+
+.DS_Store
