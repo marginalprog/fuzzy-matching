@@ -7,7 +7,7 @@ import json
 import pandas as pd
 from prettytable import PrettyTable
 
-import fuzzy_matching.utils.transliteration_utils as translit
+import fuzzy_matching.utils.transliteration.transliteration_utils as translit
 from fuzzy_matching.core.data_matcher import DataMatcher
 from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig
 
