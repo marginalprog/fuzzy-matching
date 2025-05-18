@@ -5,6 +5,7 @@
 import os
 import csv
 import json
+import re
 import pandas as pd
 from rapidfuzz import fuzz, process
 from typing import List, Dict, Tuple, Any, Optional, Union
@@ -226,6 +227,10 @@ class DataMatcher:
         """
         Блокирует записи по первому символу поля block_field,
         с дополнительной группировкой по полям group_fields.
+        Если дополнительные поля группировки (group_fields) указаны:
+            Создает вложенную структуру с блоками и подгруппами
+            Первый уровень: первая буква значения блокирующего поля (в верхнем регистре)
+            Второй уровень: кортеж значений полей из group_fields
         """
         if self.block_field is None:
             return {'ALL': recs}
@@ -269,6 +274,54 @@ class DataMatcher:
         length2 = sum(len(str(record2.get(f, ''))) for f in self.match_fields)
         return record1 if length1 <= length2 else record2
     
+    def _evaluate_transliteration_quality(self, source_text, transliterated_text, target_text):
+        """
+        Оценивает качество транслитерации по нескольким критериям.
+        
+        :param source_text: исходный текст
+        :param transliterated_text: транслитерированный текст
+        :param target_text: целевой текст для сравнения
+        :return: оценка качества (0.0-1.0)
+        """
+        if not source_text or not transliterated_text or not target_text:
+            return 0.0
+        
+        # Компонент 1: Семантическое сходство (используем token_sort_ratio)
+        semantic_similarity = fuzz.token_sort_ratio(transliterated_text.lower(), target_text.lower()) / 100
+        
+        # Компонент 2: Символьное соответствие
+        # Вычисляем, какой процент символов в transliterated_text соответствует ожидаемому языку
+        expected_pattern = r'[а-яА-ЯёЁ]' if translit.detect_language(target_text) == 'ru' else r'[a-zA-Z]'
+        total_chars = len(transliterated_text.strip())
+        if total_chars == 0:
+            return 0.0
+            
+        valid_chars = len(re.findall(expected_pattern, transliterated_text))
+        char_quality = valid_chars / total_chars if total_chars > 0 else 0
+        
+        # Компонент 3: Длина (отношение длин текстов не должно сильно различаться)
+        source_len = len(source_text.strip())
+        target_len = len(target_text.strip())
+        trans_len = len(transliterated_text.strip())
+        
+        # Сравниваем, насколько длина транслитерации ближе к длине целевого текста
+        if target_len == 0:
+            length_ratio = 0.0
+        else:
+            length_delta = abs(trans_len - target_len) / target_len
+            length_ratio = max(0, 1 - length_delta)  # 1.0 - идентичная длина, 0.0 - сильно отличается
+        
+        # Взвешенная комбинация всех компонентов
+        # Придаем больший вес семантическому сходству, так как оно наиболее важно
+        weights = (0.6, 0.3, 0.1)  # Веса для semantic_similarity, char_quality, length_ratio
+        weighted_score = (
+            semantic_similarity * weights[0] + 
+            char_quality * weights[1] + 
+            length_ratio * weights[2]
+        )
+        
+        return weighted_score
+    
     def _process_transliteration(self, value1, value2, field=None):
         """
         Обрабатывает пару строк с транслитерацией, автоматически определяет язык и
@@ -285,6 +338,11 @@ class DataMatcher:
         # Определяем язык строк
         lang1 = translit.detect_language(value1)
         lang2 = translit.detect_language(value2)
+        
+        # Если язык не удалось определить для одной из строк, возвращаем оригинальные строки
+        if lang1 is None or lang2 is None:
+            similarity = fuzz.token_sort_ratio(value1.lower(), value2.lower()) / 100 if value1 and value2 else 0
+            return value1, value2, similarity
         
         # Нормализуем имена, если это указано в настройках
         if self.transliteration.normalize_names:
@@ -310,36 +368,40 @@ class DataMatcher:
             if lang1 == 'ru' and lang2 == 'en':
                 # Вариант 1: транслитерируем value1 с русского на английский
                 value1_en = translit.transliterate_ru_to_en(value1, standard)
-                similarity1 = fuzz.token_sort_ratio(value1_en.lower(), value2.lower()) / 100
+                # source_text=value1 (ru), transliterated_text=value1_en (en), target_text=value2 (en)
+                quality1 = self._evaluate_transliteration_quality(value1, value1_en, value2)
                 
                 # Вариант 2: транслитерируем value2 с английского на русский
                 value2_ru = translit.transliterate_en_to_ru(value2, standard)
-                similarity2 = fuzz.token_sort_ratio(value1.lower(), value2_ru.lower()) / 100
+                # source_text=value2 (en), transliterated_text=value2_ru (ru), target_text=value1 (ru)
+                quality2 = self._evaluate_transliteration_quality(value2, value2_ru, value1)
                 
                 # Выбираем лучший вариант
-                if similarity1 >= similarity2:
-                    return value1_en, value2, similarity1
+                if quality1 >= quality2:
+                    return value1_en, value2, quality1
                 else:
-                    return value1, value2_ru, similarity2
+                    return value1, value2_ru, quality2
             
             elif lang1 == 'en' and lang2 == 'ru':
                 # Вариант 1: транслитерируем value1 с английского на русский
                 value1_ru = translit.transliterate_en_to_ru(value1, standard)
-                similarity1 = fuzz.token_sort_ratio(value1_ru.lower(), value2.lower()) / 100
+                # source_text=value1 (en), transliterated_text=value1_ru (ru), target_text=value2 (ru)
+                quality1 = self._evaluate_transliteration_quality(value1, value1_ru, value2)
                 
                 # Вариант 2: транслитерируем value2 с русского на английский
                 value2_en = translit.transliterate_ru_to_en(value2, standard)
-                similarity2 = fuzz.token_sort_ratio(value1.lower(), value2_en.lower()) / 100
+                # source_text=value2 (ru), transliterated_text=value2_en (en), target_text=value1 (en)
+                quality2 = self._evaluate_transliteration_quality(value2, value2_en, value1)
                 
                 # Выбираем лучший вариант
-                if similarity1 >= similarity2:
-                    return value1_ru, value2, similarity1
+                if quality1 >= quality2:
+                    return value1_ru, value2, quality1
                 else:
-                    return value1, value2_en, similarity2
+                    return value1, value2_en, quality2
         
         # Если языки одинаковые или не удалось определить, возвращаем оригинальные строки
-        similarity_original = fuzz.token_sort_ratio(value1.lower(), value2.lower()) / 100
-        return value1, value2, similarity_original
+        similarity = fuzz.token_sort_ratio(value1.lower(), value2.lower()) / 100
+        return value1, value2, similarity
             
     def match_and_consolidate(self, data1, data2):
         """
@@ -402,7 +464,7 @@ class DataMatcher:
                 if record.get("id", "") not in matched_ids2:
                     consolidated.append(record.copy())
         else:
-            # Если совпадений нет, просто объединяем оба набора
+            # Если совпадений нет - объединяем оба набора
             consolidated = data1 + data2
         
         return matches, consolidated
@@ -473,17 +535,23 @@ class DataMatcher:
                 # Если вариант уже на целевом языке, возвращаем его
                 return variant
                 
-            # Транслитерируем и вычисляем "качество" варианта
+            # Транслитерируем вариант и оцениваем качество
             if target_lang == 'ru':
                 translated = translit.transliterate_en_to_ru(variant, self.transliteration_standard)
+                # Создаем эталонный текст на русском для сравнения 
+                # (используем первый вариант из списка как базовый)
+                reference_text = translit.transliterate_en_to_ru(variants[0], self.transliteration_standard)
+                # Оцениваем качество: исходный текст (en), транслитерированный текст (ru), целевой текст (ru)
+                quality = self._evaluate_transliteration_quality(variant, translated, reference_text)
             else:
                 translated = translit.transliterate_ru_to_en(variant, self.transliteration_standard)
+                # Создаем эталонный текст на английском для сравнения
+                reference_text = translit.transliterate_ru_to_en(variants[0], self.transliteration_standard)
+                # Оцениваем качество: исходный текст (ru), транслитерированный текст (en), целевой текст (en)
+                quality = self._evaluate_transliteration_quality(variant, translated, reference_text)
                 
-            # Подсчитываем, сколько символов успешно транслитерировалось
-            success_rate = len(re.findall(r'[а-яА-ЯёЁ]' if target_lang == 'ru' else r'[a-zA-Z]', translated)) / (len(translated) or 1)
-            
-            if success_rate > best_score:
-                best_score = success_rate
+            if quality > best_score:
+                best_score = quality
                 best_variant = variant
                 
         return best_variant
