@@ -38,8 +38,9 @@ class DataGenerator:
         'last_name': 'Фамилия',
         'first_name': 'Имя',
         'middle_name': 'Отчество',
-        'email': 'email',
-        'phone': 'Телефон'
+        'email': 'Email',
+        'phone': 'Телефон',
+        'gender': 'Пол'
     }
 
     def __init__(self,
@@ -321,7 +322,10 @@ class DataGenerator:
                 record[self.FIELD_NAMES['email']] = email
             if self.FIELD_NAMES['phone'] in fields:
                 record[self.FIELD_NAMES['phone']] = phone
-            record['Пол'] = gender
+            if self.FIELD_NAMES['gender'] in fields:
+                record[self.FIELD_NAMES['gender']] = gender
+            
+            # ID всегда добавляется
             record['id'] = f'record_{i+1}'
             records.append(record)
         return records
@@ -343,7 +347,8 @@ class DataGenerator:
             orig_id = distorted_record['id']
             distorted_record['id'] = f"{orig_id}_v"
 
-            gender = distorted_record.get('Пол', 'м')
+            # Получаем пол (если доступен), иначе используем мужской пол по умолчанию
+            gender = distorted_record.get(self.FIELD_NAMES.get('gender', 'Пол'), 'м')
             new_person = False
             if self.FIELD_NAMES['last_name'] in fields:
                 last_name, new_person = self.vary_name(distorted_record[self.FIELD_NAMES['last_name']], 'last', gender)

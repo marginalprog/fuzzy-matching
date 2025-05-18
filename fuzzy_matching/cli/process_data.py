@@ -6,34 +6,19 @@
 Примеры использования:
 
 1. Сопоставление данных и поиск похожих записей:
-   python -m fuzzy_matching.cli.process_data --mode match \
-       --input1 fuzzy_matching/data_ru.json --format1 json \
-       --input2 fuzzy_matching/data_en.json --format2 json \
-       --output-matches results/matches.json \
-       --output-consolidated results/consolidated.json \
-       --threshold 0.7 \
-       --name-fields "id:id,Фамилия:Фамилия,Имя:Имя,Отчество:Отчество,Email:Email" \
-       --match-fields "Фамилия:0.5:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO" \
-       --verbose
+```
+python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/variant.json --format2 json --output-matches data/output/matches.json --output-consolidated data/output/consolidated.json --threshold 0.7 --match-fields "Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,Email:0.1:false:RATIO" --verbose
+```
 
 2. Транслитерация данных между русским и английским языками:
-   python -m fuzzy_matching.cli.process_data --mode transliterate \
-       --input1 fuzzy_matching/russian_employees.json --format1 json \
-       --target-lang en \
-       --output-consolidated results/english_employees.json \
-       --name-fields "ID:ID,Фамилия:Фамилия,Имя:Имя,Отчество:Отчество,Должность:Должность,Email:Email" \
-       --transliterate-fields "Фамилия,Имя,Отчество" \
-       --verbose
+```
+python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/russian_data.json --format1 json --target-lang en --output-consolidated data/output/english_data.json --transliterate-fields "Фамилия,Имя,Отчество" --verbose
+```
 
 3. Генерация тестовых данных для отладки и тестирования:
-   python -m fuzzy_matching.cli.process_data --mode generate \
-       --output-original data/original_data.json \
-       --output-variant data/variant_data.json \
-       --output-format json \
-       --record-count 100 \
-       --typo-probability 0.1 \
-       --character-probability 0.05 \
-       --verbose
+```
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original.json --output-variant data/input/variant.json --output-format json --record-count 100 --typo-probability 0.1 --character-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,Email" --verbose
+```
 
 Описание основных параметров:
   --mode: режим работы (match, transliterate или generate)
@@ -42,9 +27,9 @@
   --output-matches: путь для сохранения найденных совпадений
   --output-consolidated: путь для сохранения консолидированных данных
   --threshold: порог схожести (от 0 до 1)
-  --name-fields: соответствие полей в формате 'source1:target1,source2:target2'
   --match-fields: конфигурация полей для сопоставления
   --target-lang: целевой язык для транслитерации (ru или en)
+  --generate-fields: список полей для генерации в режиме generate
 """
 
 import argparse
@@ -58,6 +43,13 @@ from fuzzy_matching.core.match_config_classes import (
 from fuzzy_matching.core.data_matcher import DataMatcher
 from fuzzy_matching.utils.cli_utils import generate_and_save_test_data
 
+# Определение путей по умолчанию для файлов данных и результатов
+DATA_INPUT_DIR = 'data/input'
+DATA_OUTPUT_DIR = 'data/output'
+
+# Создаем директории, если они еще не существуют
+os.makedirs(DATA_INPUT_DIR, exist_ok=True)
+os.makedirs(DATA_OUTPUT_DIR, exist_ok=True)
 
 def parse_name_fields(fields_str):
     """
@@ -155,9 +147,9 @@ def main():
     
     # Параметры для вывода
     parser.add_argument('--output-matches',
-                      help="Путь для сохранения результатов сопоставления")
+                      help=f"Путь для сохранения результатов сопоставления (по умолчанию {os.path.join(DATA_OUTPUT_DIR, 'matches.json')})")
     parser.add_argument('--output-consolidated',
-                      help="Путь для сохранения консолидированных данных")
+                      help=f"Путь для сохранения консолидированных данных (по умолчанию {os.path.join(DATA_OUTPUT_DIR, 'consolidated.json')})")
     parser.add_argument('--output-format', choices=['csv', 'json'], default='json',
                       help="Формат выходных файлов (по умолчанию json)")
     parser.add_argument('--verbose', action='store_true',
@@ -165,15 +157,17 @@ def main():
     
     # Параметры для генерации тестовых данных
     parser.add_argument('--output-original',
-                      help="Путь для сохранения оригинальных данных (для режима generate)")
+                      help=f"Путь для сохранения оригинальных данных (по умолчанию {os.path.join(DATA_INPUT_DIR, 'original.json')})")
     parser.add_argument('--output-variant',
-                      help="Путь для сохранения искаженных данных (для режима generate)")
+                      help=f"Путь для сохранения искаженных данных (по умолчанию {os.path.join(DATA_INPUT_DIR, 'variant.json')})")
     parser.add_argument('--record-count', type=int, default=100,
                       help="Количество записей для генерации (по умолчанию 100)")
     parser.add_argument('--typo-probability', type=float, default=0.1,
                       help="Вероятность опечатки в поле (от 0 до 1, по умолчанию 0.1)")
     parser.add_argument('--character-probability', type=float, default=0.05,
                       help="Вероятность искажения символов в поле (от 0 до 1, по умолчанию 0.05)")
+    parser.add_argument('--generate-fields',
+                      help="Список полей для генерации, разделенных запятыми (по умолчанию: id,Фамилия,Имя,Отчество,Email,Телефон)")
     
     # Параметры конфигурации
     parser.add_argument('--threshold', type=float, default=0.7,
@@ -237,14 +231,31 @@ def main():
         }
         
         # Определяем поля для генерации
-        gen_fields = [
+        default_fields = [
             {'name': 'id', 'type': 'id'},
             {'name': 'Фамилия', 'type': 'last_name'},
             {'name': 'Имя', 'type': 'first_name'},
             {'name': 'Отчество', 'type': 'middle_name'},
             {'name': 'Email', 'type': 'email'},
-            {'name': 'Телефон', 'type': 'phone'}
+            {'name': 'Телефон', 'type': 'phone'},
+            {'name': 'Пол', 'type': 'gender'}
         ]
+        
+        # Если указаны конкретные поля, фильтруем список полей
+        gen_fields = default_fields
+        if args.generate_fields:
+            selected_fields = [field.strip() for field in args.generate_fields.split(',')]
+            gen_fields = [field for field in default_fields if field['name'] in selected_fields]
+            # Добавляем id, если его нет, так как он необходим для работы
+            if not any(field['name'] == 'id' for field in gen_fields):
+                gen_fields.insert(0, {'name': 'id', 'type': 'id'})
+            
+            if args.verbose:
+                print(f"Генерация полей: {', '.join(field['name'] for field in gen_fields)}")
+        
+        # Используем пути по умолчанию, если пути не указаны
+        output_original = args.output_original or os.path.join(DATA_INPUT_DIR, f'original.{args.output_format}')
+        output_variant = args.output_variant or os.path.join(DATA_INPUT_DIR, f'variant.{args.output_format}')
         
         # Генерируем данные
         original_list, variant_list = generate_and_save_test_data(
@@ -252,16 +263,14 @@ def main():
             gen_fields=gen_fields,
             count=args.record_count,
             file_format=args.output_format,
-            original_file=args.output_original,
-            variant_file=args.output_variant
+            original_file=output_original,
+            variant_file=output_variant
         )
         
         if args.verbose:
             print(f"Сгенерировано {len(original_list)} оригинальных и {len(variant_list)} искаженных записей")
-            if args.output_original:
-                print(f"Оригинальные данные сохранены в {args.output_original}")
-            if args.output_variant:
-                print(f"Искаженные данные сохранены в {args.output_variant}")
+            print(f"Оригинальные данные сохранены в {output_original}")
+            print(f"Искаженные данные сохранены в {output_variant}")
         
         return
     
@@ -361,15 +370,18 @@ def main():
             fields=fields_to_transliterate
         )
         
+        # Используем путь по умолчанию, если путь не указан
+        output_consolidated = args.output_consolidated or os.path.join(DATA_OUTPUT_DIR, f'transliterated.{args.output_format}')
+        
         # Сохраняем результаты
-        if args.output_consolidated:
+        if output_consolidated:
             if args.output_format == 'json':
-                matcher.save_consolidated_to_json(transliterated_data, args.output_consolidated)
+                matcher.save_consolidated_to_json(transliterated_data, output_consolidated)
             else:
-                matcher.save_consolidated_to_csv(transliterated_data, args.output_consolidated)
+                matcher.save_consolidated_to_csv(transliterated_data, output_consolidated)
             
             if args.verbose:
-                print(f"Результаты сохранены в {args.output_consolidated}")
+                print(f"Результаты сохранены в {output_consolidated}")
         else:
             # Выводим результаты на экран
             print("\nРезультаты транслитерации:")
@@ -416,26 +428,30 @@ def main():
             print(f"Найдено {len(matches)} совпадений")
             print(f"Консолидировано {len(consolidated)} записей")
         
+        # Используем пути по умолчанию, если пути не указаны
+        output_matches = args.output_matches or os.path.join(DATA_OUTPUT_DIR, f'matches.{args.output_format}')
+        output_consolidated = args.output_consolidated or os.path.join(DATA_OUTPUT_DIR, f'consolidated.{args.output_format}')
+        
         # Сохраняем результаты
-        if args.output_matches:
+        if output_matches:
             if args.output_format == 'json':
-                matcher.save_matches_to_json(matches, args.output_matches)
+                matcher.save_matches_to_json(matches, output_matches)
             else:
-                matcher.save_matches_to_csv(matches, args.output_matches)
+                matcher.save_matches_to_csv(matches, output_matches)
             
             if args.verbose:
-                print(f"Совпадения сохранены в {args.output_matches}")
+                print(f"Совпадения сохранены в {output_matches}")
         
-        if args.output_consolidated:
+        if output_consolidated:
             if args.output_format == 'json':
-                matcher.save_consolidated_to_json(consolidated, args.output_consolidated)
+                matcher.save_consolidated_to_json(consolidated, output_consolidated)
             else:
-                matcher.save_consolidated_to_csv(consolidated, args.output_consolidated)
+                matcher.save_consolidated_to_csv(consolidated, output_consolidated)
             
             if args.verbose:
-                print(f"Консолидированные данные сохранены в {args.output_consolidated}")
+                print(f"Консолидированные данные сохранены в {output_consolidated}")
         
-        if not args.output_matches and not args.output_consolidated:
+        if not output_matches and not output_consolidated:
             # Выводим результаты на экран
             print("\nНайденные совпадения:")
             for i, match in enumerate(matches[:5]):

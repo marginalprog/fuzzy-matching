@@ -28,10 +28,19 @@ benchmark_results.csv
 
 # Генерируемые файлы и каталоги
 /data/*.json
+/data/*.csv
 /fuzzy_matching/results/*.json
 /fuzzy_matching/data/*.json
 /demo_data/
 /results/
+
+# Структурированные директории с данными
+/data/input/
+/data/output/
+/data/input/*.json
+/data/output/*.json
+/data/input/*.csv
+/data/output/*.csv
 
 # Тестовые файлы в корне проекта
 /test_original.json

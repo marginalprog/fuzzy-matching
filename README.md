@@ -49,6 +49,18 @@ fuzzy_matching/
     └── test_transliteration.py
 ```
 
+### Структура директорий данных
+
+Данные хранятся в стандартизированной структуре каталогов:
+
+```
+data/
+├── input/    # Входные данные (оригинальные и вариантные наборы)
+└── output/   # Результаты обработки (совпадения и консолидированные данные)
+```
+
+При использовании CLI или API, файлы будут автоматически сохраняться в соответствующие каталоги.
+
 ## Использование
 
 ### Через командную строку (CLI)
@@ -56,38 +68,29 @@ fuzzy_matching/
 #### Сопоставление данных
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode match \
-    --input1 data/file1.json --format1 json \
-    --input2 data/file2.json --format2 json \
-    --match-fields "Фамилия:0.6:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.1:true:RATIO" \
-    --threshold 0.7 \
-    --output-matches matches.json \
-    --output-consolidated consolidated.json \
-    --verbose
+python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/variant.json --format2 json --match-fields "Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,Email:0.1:false:RATIO" --threshold 0.7 --output-matches data/output/matches.json --output-consolidated data/output/consolidated.json --verbose
 ```
 
 #### Транслитерация данных
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode transliterate \
-    --input1 data/input.json --format1 json \
-    --target-lang en \
-    --transliterate-fields "Фамилия,Имя,Отчество" \
-    --output-consolidated transliterated.json \
-    --verbose
+python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/russian_data.json --format1 json --target-lang en --transliterate-fields "Фамилия,Имя,Отчество" --output-consolidated data/output/transliterated.json --verbose
 ```
 
 #### Генерация тестовых данных
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode generate \
-    --output-original original.json \
-    --output-variant variant.json \
-    --record-count 100 \
-    --typo-probability 0.1 \
-    --character-probability 0.05 \
-    --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --typo-probability 0.1 --character-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,Email" --output-original data/input/test_original.json --output-variant data/input/test_variant.json --verbose
 ```
+
+Вы можете контролировать, какие поля генерировать, с помощью параметра `--generate-fields`. Доступные поля:
+- `id` - уникальный идентификатор (всегда генерируется)
+- `Фамилия` - фамилия
+- `Имя` - имя
+- `Отчество` - отчество
+- `Email` - адрес электронной почты 
+- `Телефон` - номер телефона
+- `Пол` - пол (м/ж)
 
 ### Через API
 
