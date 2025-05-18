@@ -265,8 +265,12 @@ def transliterate_dataset(
 
 def generate_test_datasets(
     count: int = 100, 
-    typo_probability: float = 0.1,
-    character_probability: float = 0.05,
+    double_char_probability: float = 0.1,
+    change_char_probability: float = 0.05,
+    change_name_probability: float = 0.1,
+    change_domain_probability: float = 0.3,
+    double_number_probability: float = 0.3,
+    suffix_probability: float = 0.1,
     save_to_file: bool = False,
     output_original: Optional[str] = None,
     output_variant: Optional[str] = None,
@@ -276,8 +280,12 @@ def generate_test_datasets(
     Генерирует тестовые наборы данных для отладки и тестирования.
     
     :param count: количество записей для генерации
-    :param typo_probability: вероятность опечатки в поле (от 0 до 1)
-    :param character_probability: вероятность искажения символов в поле (от 0 до 1)
+    :param double_char_probability: вероятность дублирования буквы (от 0 до 1)
+    :param change_char_probability: вероятность замены буквы (от 0 до 1)
+    :param change_name_probability: вероятность полной замены ФИО (от 0 до 1)
+    :param change_domain_probability: вероятность изменения домена в email (от 0 до 1)
+    :param double_number_probability: вероятность дублирования цифры в телефоне (от 0 до 1)
+    :param suffix_probability: вероятность добавления суффикса к ФИО (от 0 до 1)
     :param save_to_file: сохранять ли результаты в файлы
     :param output_original: путь для сохранения оригинальных данных
     :param output_variant: путь для сохранения искаженных данных
@@ -286,10 +294,12 @@ def generate_test_datasets(
     """
     # Определяем вероятности искажений
     probabilities = {
-        'typo': typo_probability,
-        'swap': character_probability,
-        'case': 0.2,  # Вероятность изменения регистра
-        'extra_space': 0.1  # Вероятность добавления лишних пробелов
+        'double_char_probability': double_char_probability,
+        'change_char_probability': change_char_probability,
+        'change_name_probability': change_name_probability,
+        'change_domain_probability': change_domain_probability,
+        'double_number_probability': double_number_probability,
+        'suffix_probability': suffix_probability
     }
     
     # Определяем поля для генерации

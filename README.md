@@ -10,6 +10,7 @@
 - Гибкая настройка алгоритмов сопоставления для разных типов полей
 - Блокировка для ускорения сопоставления больших наборов данных
 - Консолидация данных из разных источников
+- Генерация тестовых данных на русском и английском языках
 
 ## Установка
 
@@ -27,8 +28,8 @@ fuzzy_matching/
 ├── cli/
 │   ├── __init__.py
 │   ├── demo.py          # Демонстрационное меню с примерами
-│   ├── process_data.py  # Основной CLI-интерфейс
-│   └── generate_test_data.py  # Утилита для генерации тестовых данных
+│   ├── main.py          # Основное меню CLI
+│   └── process_data.py  # Основной CLI-интерфейс
 ├── core/
 │   ├── __init__.py
 │   ├── data_matcher.py  # Основная логика сопоставления
@@ -43,7 +44,7 @@ fuzzy_matching/
 ├── examples/            # Примеры использования
 │   ├── __init__.py
 │   ├── api_example.py
-│   └── domain_specific_example.py
+│   └── technical_example.py
 └── tests/               # Тесты
     ├── __init__.py
     └── test_transliteration.py
@@ -79,11 +80,27 @@ python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/inp
 
 #### Генерация тестовых данных
 
+##### Генерация данных на русском языке с русскими названиями полей
+
 ```bash
-python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --typo-probability 0.1 --character-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,Email" --output-original data/input/test_original.json --output-variant data/input/test_variant.json --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,Email" --output-original data/input/test_original_ru.json --output-variant data/input/test_variant_ru.json --language ru --field-names-format ru --verbose
 ```
 
-Вы можете контролировать, какие поля генерировать, с помощью параметра `--generate-fields`. Доступные поля:
+##### Генерация данных на английском языке с английскими названиями полей
+
+```bash
+python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,Email" --output-original data/input/test_original_en.json --output-variant data/input/test_variant_en.json --language en --field-names-format en --verbose
+```
+
+##### Генерация данных на английском языке с русскими названиями полей
+
+```bash
+python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,Email" --output-original data/input/test_original_en_ru.json --output-variant data/input/test_variant_en_ru.json --language en --field-names-format ru --verbose
+```
+
+Вы можете контролировать, какие поля генерировать, с помощью параметра `--generate-fields`. 
+
+Доступные поля для русского формата (`--field-names-format ru`):
 - `id` - уникальный идентификатор (всегда генерируется)
 - `Фамилия` - фамилия
 - `Имя` - имя
@@ -92,13 +109,31 @@ python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --t
 - `Телефон` - номер телефона
 - `Пол` - пол (м/ж)
 
-**Важно:** Генератор поддерживает только перечисленные выше поля с точно такими же наименованиями. При сопоставлении данных из внешних источников убедитесь, что имена полей соответствуют ожидаемым или используйте маппинг полей через параметр `--name-fields`.
+Доступные поля для английского формата (`--field-names-format en`):
+- `id` - уникальный идентификатор (всегда генерируется)
+- `LastName` - фамилия
+- `FirstName` - имя
+- `MiddleName` - отчество/второе имя
+- `Email` - адрес электронной почты 
+- `Phone` - номер телефона
+- `Gender` - пол (м/ж)
+
+Параметры генерации данных:
+- `--language` - язык генерируемых данных (`ru` или `en`)
+- `--field-names-format` - формат названий полей (`ru` или `en`, по умолчанию соответствует языку)
+- `--record-count` - количество записей для генерации
+- `--double-char-probability` - вероятность дублирования буквы (от 0 до 1)
+- `--change-char-probability` - вероятность замены буквы (от 0 до 1)
+- `--change-name-probability` - вероятность полной замены ФИО (от 0 до 1)
+- `--change-domain-probability` - вероятность изменения домена в email (от 0 до 1)
+- `--double-number-probability` - вероятность дублирования цифры в телефоне (от 0 до 1)
+- `--suffix-probability` - вероятность добавления суффикса к ФИО (от 0 до 1)
 
 ### Работа с CSV-файлами
 
 При использовании CSV-файлов вместо JSON, указывайте соответствующий формат с помощью параметров `--format1 csv` и `--format2 csv`. Для корректной работы с CSV-файлами важно, чтобы:
 
-1. Заголовки столбцов соответствовали ожидаемым именам полей (`id`, `Фамилия`, `Имя`, `Отчество`, `Email`, `Телефон`, `Пол`)
+1. Заголовки столбцов соответствовали ожидаемым именам полей (`id`, `Фамилия`, `Имя`, `Отчество`, `Email`, `Телефон`, `Пол`) или их английским эквивалентам
 2. Файл был в кодировке UTF-8
 3. При необходимости использовался маппинг полей через параметр `--name-fields`
 
@@ -137,6 +172,34 @@ matches, consolidated = match_datasets(
     dataset1="data/file1.json", 
     dataset2="data/file2.json",
     config=config
+)
+
+# Генерируем тестовые данные на русском языке
+original_ru, variant_ru = generate_test_datasets(
+    count=100,
+    fields=["Фамилия", "Имя", "Отчество", "Email"],
+    language="ru",
+    field_names_format="ru",
+    double_char_probability=0.1,
+    change_char_probability=0.05,
+    change_name_probability=0.1,
+    change_domain_probability=0.3,
+    double_number_probability=0.3,
+    suffix_probability=0.1
+)
+
+# Генерируем тестовые данные на английском языке
+original_en, variant_en = generate_test_datasets(
+    count=100,
+    fields=["LastName", "FirstName", "MiddleName", "Email"],
+    language="en",
+    field_names_format="en",
+    double_char_probability=0.1,
+    change_char_probability=0.05,
+    change_name_probability=0.1,
+    change_domain_probability=0.3,
+    double_number_probability=0.3,
+    suffix_probability=0.1
 )
 
 # Сохраняем результаты
@@ -200,7 +263,7 @@ save_results(matches, consolidated, "matches.json", "consolidated.json")
 Для запуска интерактивного меню с примерами:
 
 ```bash
-python -m fuzzy_matching.cli.demo
+python -m fuzzy_matching.cli.main
 # или
 python -m fuzzy_matching
 ```

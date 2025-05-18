@@ -4,47 +4,134 @@
 
 import pandas as pd
 from prettytable import PrettyTable
-from fuzzy_matching.utils.data_generator import DataGenerator
+from fuzzy_matching.utils.data_generator import DataGenerator, Language
 
 
-def generate_test_data(probabilities, gen_fields, count=100):
+def generate_test_data(probabilities, gen_fields, count=100, language='ru', field_names_format=None):
     """
     Генерирует тестовые данные: оригинальный и искаженный списки.
     
     :param probabilities: словарь вероятностей различных искажений
+        - double_char_probability: вероятность дублирования буквы (0.0-1.0)
+        - change_char_probability: вероятность замены буквы (0.0-1.0)
+        - change_name_probability: вероятность полной замены ФИО (0.0-1.0)
+        - change_domain_probability: вероятность изменения домена в email (0.0-1.0)
+        - double_number_probability: вероятность дублирования цифры в телефоне (0.0-1.0)
+        - suffix_probability: вероятность добавления суффикса к ФИО (0.0-1.0)
     :param gen_fields: список полей для генерации в формате [{'name': 'Фамилия', 'type': 'last_name'}, ...]
+        Поля должны соответствовать формату названий полей (русскому или английскому)
     :param count: количество записей для генерации (по умолчанию 100)
+    :param language: язык генерируемых данных ('ru' или 'en')
+        - ru: русский язык (имена, фамилии и отчества на русском)
+        - en: английский язык (имена, фамилии и middle names на английском)
+    :param field_names_format: формат названий полей ('ru' или 'en', если None - соответствует языку)
+        - ru: русские названия полей (Фамилия, Имя, Отчество и т.д.)
+        - en: английские названия полей (LastName, FirstName, MiddleName и т.д.)
     :return: кортеж (список оригинальных записей, список искаженных записей)
     """
-    dg = DataGenerator(probabilities=probabilities)
+    # Выбираем язык для генератора
+    lang = Language.RUS if language.lower() == 'ru' else Language.ENG
+    
+    # Если формат названий полей не указан, используем язык
+    field_names_format = field_names_format or language
+    
+    # Создаем генератор с указанными параметрами
+    dg = DataGenerator(language=lang, probabilities=probabilities)
+    
+    # Устанавливаем формат названий полей
+    if field_names_format.lower() == 'ru':
+        dg.FIELD_NAMES = dg.FIELD_NAMES_RU
+    else:
+        dg.FIELD_NAMES = dg.FIELD_NAMES_EN
     
     # Преобразуем поля из формата [{'name': 'Фамилия', 'type': 'last_name'}] 
     # в формат ['Фамилия', 'Имя', ...]
     field_names = [field['name'] for field in gen_fields if 'name' in field]
     
-    original_list, variant_list = dg.generate_records_pair(count, fields=field_names)
+    # Проверяем, содержатся ли указанные поля в нашем генераторе
+    valid_fields = []
+    for field_name in field_names:
+        if field_name == 'id':
+            valid_fields.append('id')  # ID всегда добавляется
+        else:
+            # Проверяем, есть ли поле в значениях FIELD_NAMES
+            for field_value in dg.FIELD_NAMES.values():
+                if field_name == field_value:
+                    valid_fields.append(field_name)
+                    break
+    
+    original_list, variant_list = dg.generate_records_pair(count, fields=valid_fields)
     return original_list, variant_list
 
 
-def generate_and_save_test_data(probabilities, gen_fields, count=100, file_format='json', original_file=None, variant_file=None):
+def generate_and_save_test_data(probabilities, gen_fields, count=100, file_format='json', original_file=None, variant_file=None, language='ru', field_names_format=None, verbose=False):
     """
     Генерирует тестовые данные и сохраняет их в файлы.
     
     :param probabilities: словарь вероятностей различных искажений
+        - double_char_probability: вероятность дублирования буквы (0.0-1.0)
+        - change_char_probability: вероятность замены буквы (0.0-1.0)
+        - change_name_probability: вероятность полной замены ФИО (0.0-1.0)
+        - change_domain_probability: вероятность изменения домена в email (0.0-1.0)
+        - double_number_probability: вероятность дублирования цифры в телефоне (0.0-1.0)
+        - suffix_probability: вероятность добавления суффикса к ФИО (0.0-1.0)
     :param gen_fields: список полей для генерации в формате [{'name': 'Фамилия', 'type': 'last_name'}, ...]
+        Поля должны соответствовать формату названий полей (русскому или английскому)
     :param count: количество записей для генерации (по умолчанию 100)
     :param file_format: формат файлов для сохранения ('json' или 'csv')
     :param original_file: имя файла для оригинальных данных (если None, используется 'original_data_list.{extension}')
     :param variant_file: имя файла для искаженных данных (если None, используется 'variant_data_list.{extension}')
+    :param language: язык генерируемых данных ('ru' или 'en')
+        - ru: русский язык (имена, фамилии и отчества на русском)
+        - en: английский язык (имена, фамилии и middle names на английском)
+    :param field_names_format: формат названий полей ('ru' или 'en', если None - соответствует языку)
+        - ru: русские названия полей (Фамилия, Имя, Отчество и т.д.)
+        - en: английские названия полей (LastName, FirstName, MiddleName и т.д.)
+    :param verbose: если True, выводить подробную информацию
     :return: кортеж (список оригинальных записей, список искаженных записей)
     """
-    dg = DataGenerator(probabilities=probabilities)
+    # Выбираем язык для генератора
+    lang = Language.RUS if language.lower() == 'ru' else Language.ENG
     
-    # Преобразуем поля из формата [{'name': 'Фамилия', 'type': 'last_name'}] 
+    # Если формат названий полей не указан, используем язык
+    field_names_format = field_names_format or language
+    
+    # Создаем генератор с указанными параметрами
+    dg = DataGenerator(language=lang, probabilities=probabilities)
+    
+    # Устанавливаем формат названий полей
+    if field_names_format.lower() == 'ru':
+        dg.FIELD_NAMES = dg.FIELD_NAMES_RU
+    else:
+        dg.FIELD_NAMES = dg.FIELD_NAMES_EN
+    
+    # Преобразуем поля из формата [{'name': 'Фамилия', 'type': 'last_name'}, ...]
     # в формат ['Фамилия', 'Имя', ...]
     field_names = [field['name'] for field in gen_fields if 'name' in field]
     
-    original_list, variant_list = dg.generate_records_pair(count, fields=field_names)
+    if verbose:
+        print(f"Запрошенные поля: {field_names}")
+        print(f"Доступные поля в генераторе: {dg.FIELD_NAMES}")
+        print(f"Значения полей: {list(dg.FIELD_NAMES.values())}")
+    
+    # Проверяем, содержатся ли указанные поля в нашем генераторе
+    valid_fields = []
+    for field_name in field_names:
+        if field_name == 'id':
+            valid_fields.append('id')  # ID всегда добавляется
+        else:
+            # Проверяем, есть ли поле в значениях FIELD_NAMES
+            for field_value in dg.FIELD_NAMES.values():
+                if verbose:
+                    print(f"Сравниваем '{field_name}' с '{field_value}': {field_name == field_value}")
+                if field_name == field_value:
+                    valid_fields.append(field_name)
+                    break
+    
+    if verbose:
+        print(f"Валидные поля для генерации: {', '.join(valid_fields)}")
+    
+    original_list, variant_list = dg.generate_records_pair(count, fields=valid_fields)
 
     # Если имена файлов не указаны, используем стандартные имена
     original_file = original_file or f'original_data_list.{file_format}'

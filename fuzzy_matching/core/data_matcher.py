@@ -492,7 +492,19 @@ class DataMatcher:
                     source_value = item[field]
                     lang = translit.detect_language(source_value)
                     
-                    if lang == 'ru' and target_lang == 'en':
+                    # Если язык не определен, пробуем использовать целевой язык
+                    if lang is None:
+                        if target_lang == 'en':
+                            # Предполагаем, что это русский текст
+                            new_item[field] = translit.transliterate_ru_to_en(
+                                source_value, self.transliteration_standard
+                            )
+                        elif target_lang == 'ru':
+                            # Предполагаем, что это английский текст
+                            new_item[field] = translit.transliterate_en_to_ru(
+                                source_value, self.transliteration_standard
+                            )
+                    elif lang == 'ru' and target_lang == 'en':
                         new_item[field] = translit.transliterate_ru_to_en(
                             source_value, self.transliteration_standard
                         )

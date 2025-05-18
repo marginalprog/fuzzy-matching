@@ -23,24 +23,50 @@ class DataGenerator:
     - Сохранение сгенерированных данных в форматах JSON и CSV
     
     Параметры искажений контролируются через словарь вероятностей.
+    
+    Параметры вероятностей искажений:
+    - double_char_probability: вероятность дублирования буквы (например, "Иванов" -> "Ивванов")
+    - change_char_probability: вероятность замены буквы (например, "Иванов" -> "Иваноа")
+    - change_name_probability: вероятность полной замены ФИО
+    - change_domain_probability: вероятность изменения домена в email
+    - double_number_probability: вероятность дублирования цифры в телефоне
+    - suffix_probability: вероятность добавления суффикса к ФИО
+    
+    Доступные языки:
+    - ru: русский язык (Language.RUS)
+    - en: английский язык (Language.ENG)
+    
+    Форматы названий полей:
+    - ru: русские названия полей (Фамилия, Имя, Отчество и т.д.)
+    - en: английские названия полей (LastName, FirstName, MiddleName и т.д.)
     """
     DEFAULT_PROBABILITIES = {
-        'double_letter': 0.4,       # вероятность дублирования буквы
-        'change_letter': 0.5,       # вероятность замены буквы
-        'change_name': 0.1,         # вероятность полной замены ФИО
-        'change_name_domain': 0.3,  # вероятность изменения домена в email
-        'double_number': 0.3,       # вероятность дублирования цифры
-        'suffix_addition': 0.3      # вероятность добавления суффикса к ФИО
+        'double_char_probability': 0.3,     # вероятность дублирования буквы
+        'change_char_probability': 0.4,     # вероятность замены буквы
+        'change_name_probability': 0.1,     # вероятность полной замены ФИО
+        'change_domain_probability': 0.3,   # вероятность изменения домена в email
+        'double_number_probability': 0.3,   # вероятность дублирования цифры
+        'suffix_probability': 0.1           # вероятность добавления суффикса к ФИО
     }
 
-    # Русские названия полей для вывода данных
-    FIELD_NAMES = {
+    # Названия полей для вывода данных
+    FIELD_NAMES_RU = {
         'last_name': 'Фамилия',
         'first_name': 'Имя',
         'middle_name': 'Отчество',
         'email': 'Email',
         'phone': 'Телефон',
         'gender': 'Пол'
+    }
+    
+    # Английские названия полей
+    FIELD_NAMES_EN = {
+        'last_name': 'LastName',
+        'first_name': 'FirstName',
+        'middle_name': 'MiddleName',
+        'email': 'Email',
+        'phone': 'Phone',
+        'gender': 'Gender'
     }
 
     def __init__(self,
@@ -52,22 +78,52 @@ class DataGenerator:
         Инициализирует генератор данных.
         
         :param language: язык генерируемых данных (Language.RUS или Language.ENG)
-        :param probabilities: словарь вероятностей различных искажений
+        :param probabilities: словарь вероятностей различных искажений. Поддерживаются следующие ключи:
+            - double_char_probability: вероятность дублирования буквы (0.0-1.0)
+            - change_char_probability: вероятность замены буквы (0.0-1.0)
+            - change_name_probability: вероятность полной замены ФИО (0.0-1.0)
+            - change_domain_probability: вероятность изменения домена в email (0.0-1.0)
+            - double_number_probability: вероятность дублирования цифры в телефоне (0.0-1.0)
+            - suffix_probability: вероятность добавления суффикса к ФИО (0.0-1.0)
         :param use_patronymic_for_english: если True, для английской локализации будет
                                          использоваться транслитерированное отчество вместо middle name
         """
         self.language = language
         self.fake = faker.Faker(self.language.value)
         self.use_patronymic_for_english = use_patronymic_for_english
+        
+        # Выбираем словарь названий полей в зависимости от языка
+        self.FIELD_NAMES = self.FIELD_NAMES_RU if language == Language.RUS else self.FIELD_NAMES_EN
 
         # Устанавливаем вероятности искажений (или используем по умолчанию)
         probs = probabilities or {}
-        self.double_letter_prob = probs.get('double_letter', self.DEFAULT_PROBABILITIES['double_letter'])
-        self.change_letter_prob = probs.get('change_letter', self.DEFAULT_PROBABILITIES['change_letter'])
-        self.change_name_prob = probs.get('change_name', self.DEFAULT_PROBABILITIES['change_name'])
-        self.change_name_domain_prob = probs.get('change_name_domain', self.DEFAULT_PROBABILITIES['change_name_domain'])
-        self.double_number_prob = probs.get('double_number', self.DEFAULT_PROBABILITIES['double_number'])
-        self.suffix_addition_prob = probs.get('suffix_addition', self.DEFAULT_PROBABILITIES['suffix_addition'])
+        
+        # Обратная совместимость со старыми ключами
+        if 'double_letter' in probs:
+            probs['double_char_probability'] = probs.pop('double_letter')
+        if 'typo_probability' in probs:
+            probs['double_char_probability'] = probs.pop('typo_probability')
+        if 'change_letter' in probs or 'swap' in probs:
+            key = 'swap' if 'swap' in probs else 'change_letter'
+            probs['change_char_probability'] = probs.pop(key)
+        if 'character_probability' in probs:
+            probs['change_char_probability'] = probs.pop('character_probability')
+        if 'change_name' in probs:
+            probs['change_name_probability'] = probs.pop('change_name')
+        if 'change_name_domain' in probs:
+            probs['change_domain_probability'] = probs.pop('change_name_domain')
+        if 'double_number' in probs:
+            probs['double_number_probability'] = probs.pop('double_number')
+        if 'suffix_addition' in probs:
+            probs['suffix_probability'] = probs.pop('suffix_addition')
+        
+        # Устанавливаем вероятности с учетом значений по умолчанию
+        self.double_char_probability = probs.get('double_char_probability', self.DEFAULT_PROBABILITIES['double_char_probability'])
+        self.change_char_probability = probs.get('change_char_probability', self.DEFAULT_PROBABILITIES['change_char_probability'])
+        self.change_name_probability = probs.get('change_name_probability', self.DEFAULT_PROBABILITIES['change_name_probability'])
+        self.change_domain_probability = probs.get('change_domain_probability', self.DEFAULT_PROBABILITIES['change_domain_probability'])
+        self.double_number_probability = probs.get('double_number_probability', self.DEFAULT_PROBABILITIES['double_number_probability'])
+        self.suffix_probability = probs.get('suffix_probability', self.DEFAULT_PROBABILITIES['suffix_probability'])
 
         self.gender_detector = gender.Detector()
 
@@ -123,7 +179,7 @@ class DataGenerator:
         digits[idx] = str(random.randint(0, 9))
 
         # Дополнительная ошибка с заданной вероятностью
-        if random.random() < self.double_number_prob:
+        if random.random() < self.double_number_probability:
             idx2 = random.randint(0, len(digits) - 1)
             digits[idx2] = str(random.randint(0, 9))
         return ''.join(digits)
@@ -140,13 +196,13 @@ class DataGenerator:
             return self.fake.email()
         user, domain = email.split('@')
         rnd = random.random()
-        if rnd < self.double_letter_prob:
+        if rnd < self.double_char_probability:
             # Дублируем букву в логине email
             return f"{self.doubling_letter(user)}@{domain}"
-        elif rnd < self.double_letter_prob + self.change_letter_prob:
+        elif rnd < self.double_char_probability + self.change_char_probability:
             # Заменяем букву в логине email
             return f"{self.changing_letter(user, email_flag=True)}@{domain}"
-        elif rnd < self.double_letter_prob + self.change_letter_prob + self.change_name_domain_prob:
+        elif rnd < self.double_char_probability + self.change_char_probability + self.change_domain_probability:
             # Изменяем букву и в логине, и в домене
             new_user = self.changing_letter(user, email_flag=True)
             new_domain = self.changing_letter(domain, email_flag=True)
@@ -254,11 +310,11 @@ class DataGenerator:
         """
         # Определяем вероятность изменения буквы или всего имени
         rnd = random.random()
-        if rnd < self.double_letter_prob:
+        if rnd < self.double_char_probability:
             return self.doubling_letter(name), False
-        elif rnd < self.double_letter_prob + self.change_letter_prob:
+        elif rnd < self.double_char_probability + self.change_char_probability:
             return self.changing_letter(name), False
-        elif rnd < self.double_letter_prob + self.change_letter_prob + self.change_name_prob:
+        elif rnd < self.double_char_probability + self.change_char_probability + self.change_name_probability:
             # Полная замена имени через Faker или наши кастомные генераторы
             if part == 'first':
                 new_name = self.fake.first_name_male() if gender == 'м' else self.fake.first_name_female()
@@ -270,7 +326,7 @@ class DataGenerator:
                 new_name = name
             return new_name, True
         # Добавление суффикса
-        if random.random() < self.suffix_addition_prob:
+        if random.random() < self.suffix_probability:
             if self.language == Language.RUS:
                 russian_suffixes = ['ов', 'ев', 'ин', 'ский', 'цкий']
                 return name + random.choice(russian_suffixes), False
@@ -286,6 +342,10 @@ class DataGenerator:
         
         :param num_records: количество записей для генерации
         :param fields: список полей для генерации (если None, используются все поля)
+            Поля должны соответствовать значениям из self.FIELD_NAMES, например:
+            - Для русского формата: ['Фамилия', 'Имя', 'Отчество', 'Email']
+            - Для английского формата: ['LastName', 'FirstName', 'MiddleName', 'Email']
+            - Поле 'id' всегда добавляется автоматически
         :param use_patronymic_for_english: если указано, переопределяет настройку из конструктора
         :return: список записей
         """
@@ -374,6 +434,10 @@ class DataGenerator:
         
         :param num_records: количество записей для генерации
         :param fields: список полей для генерации
+            Поля должны соответствовать значениям из self.FIELD_NAMES, например:
+            - Для русского формата: ['Фамилия', 'Имя', 'Отчество', 'Email']
+            - Для английского формата: ['LastName', 'FirstName', 'MiddleName', 'Email']
+            - Поле 'id' всегда добавляется автоматически
         :return: кортеж (список оригинальных записей, список искаженных записей)
         """
         clean_records = self.generate_clean_records_list(num_records, fields)

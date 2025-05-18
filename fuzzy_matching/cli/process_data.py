@@ -15,9 +15,14 @@ python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/origi
 python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/russian_data.json --format1 json --target-lang en --output-consolidated data/output/english_data.json --transliterate-fields "Фамилия,Имя,Отчество" --verbose
 ```
 
-3. Генерация тестовых данных для отладки и тестирования:
+3. Генерация тестовых данных на русском языке с русскими названиями полей:
 ```
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original.json --output-variant data/input/variant.json --output-format json --record-count 100 --typo-probability 0.1 --character-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,Email" --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_ru.json --output-variant data/input/variant_ru.json --output-format json --record-count 100 --typo-probability 0.1 --character-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,Email" --language ru --field-names-format ru --verbose
+```
+
+4. Генерация тестовых данных на английском языке с английскими названиями полей:
+```
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_en.json --output-variant data/input/variant_en.json --output-format json --record-count 100 --typo-probability 0.1 --character-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,Email" --language en --field-names-format en --verbose
 ```
 
 Описание основных параметров:
@@ -30,11 +35,29 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
   --match-fields: конфигурация полей для сопоставления
   --target-lang: целевой язык для транслитерации (ru или en)
   --generate-fields: список полей для генерации в режиме generate
+  --language: язык генерируемых данных (ru или en)
+  --field-names-format: формат названий полей (ru или en)
+  --typo-probability: вероятность опечатки в поле (от 0 до 1)
+  --character-probability: вероятность искажения символов в поле (от 0 до 1)
 """
 
 import argparse
 import sys
 import os
+from prettytable import PrettyTable
+
+# Классы для цветного вывода в терминале
+class Colors:
+    """Класс с ANSI-кодами цветов для терминала"""
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 from fuzzy_matching.core.match_config_classes import (
     MatchConfig, MatchFieldConfig, TransliterationConfig, 
@@ -173,12 +196,24 @@ def main():
                       help=f"Путь для сохранения искаженных данных (по умолчанию {os.path.join(DATA_INPUT_DIR, 'variant.json')})")
     parser.add_argument('--record-count', type=int, default=100,
                       help="Количество записей для генерации (по умолчанию 100)")
-    parser.add_argument('--typo-probability', type=float, default=0.1,
-                      help="Вероятность опечатки в поле (от 0 до 1, по умолчанию 0.1)")
-    parser.add_argument('--character-probability', type=float, default=0.05,
-                      help="Вероятность искажения символов в поле (от 0 до 1, по умолчанию 0.05)")
+    parser.add_argument('--double-char-probability', type=float, default=0.1,
+                      help="Вероятность дублирования буквы (от 0 до 1, по умолчанию 0.1)")
+    parser.add_argument('--change-char-probability', type=float, default=0.05,
+                      help="Вероятность замены буквы (от 0 до 1, по умолчанию 0.05)")
+    parser.add_argument('--change-name-probability', type=float, default=0.1,
+                      help="Вероятность полной замены ФИО (от 0 до 1, по умолчанию 0.1)")
+    parser.add_argument('--change-domain-probability', type=float, default=0.3,
+                      help="Вероятность изменения домена в email (от 0 до 1, по умолчанию 0.3)")
+    parser.add_argument('--double-number-probability', type=float, default=0.3,
+                      help="Вероятность дублирования цифры в телефоне (от 0 до 1, по умолчанию 0.3)")
+    parser.add_argument('--suffix-probability', type=float, default=0.1,
+                      help="Вероятность добавления суффикса к ФИО (от 0 до 1, по умолчанию 0.1)")
     parser.add_argument('--generate-fields',
-                      help="Список полей для генерации, разделенных запятыми (по умолчанию: id,Фамилия,Имя,Отчество,Email,Телефон)")
+                      help="Список полей для генерации, разделенных запятыми (например: id,Фамилия,Имя,Отчество,Email для русского или id,LastName,FirstName,MiddleName,Email для английского)")
+    parser.add_argument('--language', choices=['ru', 'en'], default='ru',
+                      help="Язык генерируемых данных (ru - русский, en - английский, по умолчанию ru)")
+    parser.add_argument('--field-names-format', choices=['ru', 'en'], default=None,
+                      help="Формат названий полей (ru - русские названия, en - английские названия, по умолчанию соответствует языку)")
     
     # Параметры конфигурации
     parser.add_argument('--threshold', type=float, default=0.7,
@@ -231,14 +266,16 @@ def main():
     # Режим генерации тестовых данных
     if args.mode == 'generate':
         if args.verbose:
-            print(f"Генерация тестовых данных...")
+            print(f"{Colors.BOLD}{Colors.GREEN}Генерация тестовых данных...{Colors.ENDC}")
         
         # Определяем вероятности искажений
         probabilities = {
-            'typo': args.typo_probability,
-            'swap': args.character_probability,
-            'case': 0.2,  # Вероятность изменения регистра
-            'extra_space': 0.1  # Вероятность добавления лишних пробелов
+            'double_char_probability': args.double_char_probability,
+            'change_char_probability': args.change_char_probability,
+            'change_name_probability': args.change_name_probability,
+            'change_domain_probability': args.change_domain_probability,
+            'double_number_probability': args.double_number_probability,
+            'suffix_probability': args.suffix_probability
         }
         
         # Определяем поля для генерации
@@ -256,17 +293,25 @@ def main():
         gen_fields = default_fields
         if args.generate_fields:
             selected_fields = [field.strip() for field in args.generate_fields.split(',')]
-            gen_fields = [field for field in default_fields if field['name'] in selected_fields]
+            
+            # Создаем поля с правильными именами в зависимости от формата названий полей
+            gen_fields = []
+            for field_name in selected_fields:
+                gen_fields.append({'name': field_name, 'type': field_name.lower()})
+            
             # Добавляем id, если его нет, так как он необходим для работы
             if not any(field['name'] == 'id' for field in gen_fields):
                 gen_fields.insert(0, {'name': 'id', 'type': 'id'})
             
             if args.verbose:
-                print(f"Генерация полей: {', '.join(field['name'] for field in gen_fields)}")
+                print(f"{Colors.GREEN}Генерация полей: {', '.join(field['name'] for field in gen_fields)}{Colors.ENDC}")
         
         # Используем пути по умолчанию, если пути не указаны
         output_original = args.output_original or os.path.join(DATA_INPUT_DIR, f'original.{args.output_format}')
         output_variant = args.output_variant or os.path.join(DATA_INPUT_DIR, f'variant.{args.output_format}')
+        
+        # Определяем формат названий полей (если не указан, используем язык)
+        field_names_format = args.field_names_format or args.language
         
         # Генерируем данные
         original_list, variant_list = generate_and_save_test_data(
@@ -275,22 +320,60 @@ def main():
             count=args.record_count,
             file_format=args.output_format,
             original_file=output_original,
-            variant_file=output_variant
+            variant_file=output_variant,
+            language=args.language,
+            field_names_format=field_names_format,
+            verbose=args.verbose
         )
         
         if args.verbose:
-            print(f"Сгенерировано {len(original_list)} оригинальных и {len(variant_list)} искаженных записей")
-            print(f"Оригинальные данные сохранены в {output_original}")
-            print(f"Искаженные данные сохранены в {output_variant}")
+            print(f"{Colors.GREEN}Сгенерировано {len(original_list)} оригинальных и {len(variant_list)} искаженных записей{Colors.ENDC}")
+            print(f"{Colors.CYAN}Оригинальные данные сохранены в {output_original}{Colors.ENDC}")
+            print(f"{Colors.CYAN}Искаженные данные сохранены в {output_variant}{Colors.ENDC}")
+            print(f"{Colors.YELLOW}Язык данных: {args.language.upper()}{Colors.ENDC}")
+            print(f"{Colors.YELLOW}Формат названий полей: {field_names_format.upper()}{Colors.ENDC}")
         
-        # Вывод 5 записей из каждого датасета
-        print("\nПримеры оригинальных записей:")
-        for i, record in enumerate(original_list[:5]):
-            print(f"{i+1}. {record}")
+        # Вывод примеров записей в виде красивой таблицы
+        print(f"\n{Colors.YELLOW}{Colors.BOLD}Примеры оригинальных и искаженных записей:{Colors.ENDC}")
+        
+        # Создаем таблицу
+        table = PrettyTable()
+        
+        # Определяем заголовки на основе первой записи
+        if original_list and variant_list:
+            # Получаем все уникальные ключи из обоих наборов
+            all_keys = set()
+            for record in original_list[:5] + variant_list[:5]:
+                all_keys.update(record.keys())
             
-        print("\nПримеры искаженных записей:")
-        for i, record in enumerate(variant_list[:5]):
-            print(f"{i+1}. {record}")
+            # Добавляем столбец для указания типа записи (оригинал/искаженная)
+            field_names = ["Тип"] + sorted(all_keys)
+            table.field_names = field_names
+            
+            # Добавляем данные в таблицу
+            for i in range(min(5, len(original_list))):
+                orig_row = ["Оригинал"]
+                for key in field_names[1:]:  # Пропускаем первый столбец "Тип"
+                    orig_row.append(original_list[i].get(key, ""))
+                table.add_row(orig_row)
+                
+                if i < len(variant_list):
+                    var_row = ["Искаженная"]
+                    for key in field_names[1:]:  # Пропускаем первый столбец "Тип"
+                        var_row.append(variant_list[i].get(key, ""))
+                    table.add_row(var_row)
+                    
+                    # Добавляем пустую строку для разделения пар записей
+                    if i < min(4, len(original_list) - 1):
+                        table.add_row([""] * len(field_names))
+            
+            # Настраиваем стиль таблицы
+            table.align = "l"  # Выравнивание по левому краю
+            table.border = True
+            table.header = True
+            
+            # Выводим таблицу
+            print(table)
         
         return
     
@@ -315,8 +398,8 @@ def main():
         try:
             fuzzy_algorithm = getattr(FuzzyAlgorithm, args.fuzzy_algorithm)
         except AttributeError:
-            print(f"Предупреждение: неизвестный алгоритм '{args.fuzzy_algorithm}'. "
-                  f"Будет использован алгоритм TOKEN_SORT.")
+            print(f"{Colors.YELLOW}Предупреждение: неизвестный алгоритм '{args.fuzzy_algorithm}'. "
+                  f"Будет использован алгоритм TOKEN_SORT.{Colors.ENDC}")
             fuzzy_algorithm = FuzzyAlgorithm.TOKEN_SORT
     
     # Создаем конфигурацию
@@ -334,25 +417,25 @@ def main():
     # Проверяем существование входных файлов для режимов match и transliterate
     if args.mode in ['match', 'transliterate']:
         if not args.input1:
-            print(f"Ошибка: для режима {args.mode} необходимо указать входной файл (--input1)")
+            print(f"{Colors.RED}Ошибка: для режима {args.mode} необходимо указать входной файл (--input1){Colors.ENDC}")
             sys.exit(1)
             
         if not args.format1:
-            print(f"Ошибка: для режима {args.mode} необходимо указать формат входного файла (--format1)")
+            print(f"{Colors.RED}Ошибка: для режима {args.mode} необходимо указать формат входного файла (--format1){Colors.ENDC}")
             sys.exit(1)
             
         if not os.path.exists(args.input1):
-            print(f"Ошибка: файл {args.input1} не найден")
+            print(f"{Colors.RED}Ошибка: файл {args.input1} не найден{Colors.ENDC}")
             sys.exit(1)
     
     if args.mode == 'match' and args.input2 and not os.path.exists(args.input2):
-        print(f"Ошибка: файл {args.input2} не найден")
+        print(f"{Colors.RED}Ошибка: файл {args.input2} не найден{Colors.ENDC}")
         sys.exit(1)
     
     # Загружаем первый набор данных
     try:
         if args.verbose:
-            print(f"Загрузка данных из {args.input1}...")
+            print(f"{Colors.CYAN}Загрузка данных из {args.input1}...{Colors.ENDC}")
         
         data1 = None
         if args.format1 == 'csv':
@@ -361,19 +444,19 @@ def main():
             data1 = matcher.load_from_json(args.input1, name_fields)
         
         if args.verbose:
-            print(f"Загружено {len(data1)} записей из {args.input1}")
+            print(f"{Colors.GREEN}Загружено {len(data1)} записей из {args.input1}{Colors.ENDC}")
     except Exception as e:
-        print(f"Ошибка при загрузке данных из {args.input1}: {str(e)}")
+        print(f"{Colors.RED}Ошибка при загрузке данных из {args.input1}: {str(e)}{Colors.ENDC}")
         sys.exit(1)
     
     # Режим транслитерации
     if args.mode == 'transliterate':
         if not args.target_lang:
-            print("Ошибка: для режима транслитерации необходимо указать целевой язык (--target-lang)")
+            print(f"{Colors.RED}Ошибка: для режима транслитерации необходимо указать целевой язык (--target-lang){Colors.ENDC}")
             sys.exit(1)
         
         if args.verbose:
-            print(f"Транслитерация данных из {args.input1} в {args.target_lang}...")
+            print(f"{Colors.CYAN}Транслитерация данных из {args.input1} в {args.target_lang}...{Colors.ENDC}")
         
         # Определяем поля для транслитерации
         fields_to_transliterate = []
@@ -401,30 +484,30 @@ def main():
                 matcher.save_consolidated_to_csv(transliterated_data, output_consolidated)
             
             if args.verbose:
-                print(f"Результаты сохранены в {output_consolidated}")
+                print(f"{Colors.GREEN}Результаты сохранены в {output_consolidated}{Colors.ENDC}")
         else:
             # Выводим результаты на экран
-            print("\nРезультаты транслитерации:")
+            print(f"\n{Colors.YELLOW}Результаты транслитерации:{Colors.ENDC}")
             for i, record in enumerate(transliterated_data[:10]):
-                print(f"{i+1}. {record}")
+                print(f"{Colors.GREEN}{i+1}. {record}{Colors.ENDC}")
             
             if len(transliterated_data) > 10:
-                print(f"... и еще {len(transliterated_data) - 10} записей")
+                print(f"{Colors.BLUE}... и еще {len(transliterated_data) - 10} записей{Colors.ENDC}")
     
     # Режим сопоставления
     elif args.mode == 'match':
         if not args.input2:
-            print("Ошибка: для режима сопоставления необходимо указать второй входной файл (--input2)")
+            print(f"{Colors.RED}Ошибка: для режима сопоставления необходимо указать второй входной файл (--input2){Colors.ENDC}")
             sys.exit(1)
         
         if not args.format2:
-            print("Ошибка: для режима сопоставления необходимо указать формат второго файла (--format2)")
+            print(f"{Colors.RED}Ошибка: для режима сопоставления необходимо указать формат второго файла (--format2){Colors.ENDC}")
             sys.exit(1)
         
         # Загружаем второй набор данных
         try:
             if args.verbose:
-                print(f"Загрузка данных из {args.input2}...")
+                print(f"{Colors.CYAN}Загрузка данных из {args.input2}...{Colors.ENDC}")
             
             data2 = None
             if args.format2 == 'csv':
@@ -433,52 +516,39 @@ def main():
                 data2 = matcher.load_from_json(args.input2, name_fields)
             
             if args.verbose:
-                print(f"Загружено {len(data2)} записей из {args.input2}")
+                print(f"{Colors.GREEN}Загружено {len(data2)} записей из {args.input2}{Colors.ENDC}")
         except Exception as e:
-            print(f"Ошибка при загрузке данных из {args.input2}: {str(e)}")
+            print(f"{Colors.RED}Ошибка при загрузке данных из {args.input2}: {str(e)}{Colors.ENDC}")
             sys.exit(1)
         
         # Выполняем сопоставление
         if args.verbose:
-            print(f"Сопоставление данных...")
+            print(f"{Colors.CYAN}Сопоставление данных...{Colors.ENDC}")
         
         matches, consolidated = matcher.match_and_consolidate(data1, data2)
         
         if args.verbose:
-            print(f"Найдено {len(matches)} совпадений")
-            print(f"Консолидировано {len(consolidated)} записей")
-        
-        # Используем пути по умолчанию, если пути не указаны
-        output_matches = args.output_matches or os.path.join(DATA_OUTPUT_DIR, f'matches.{args.output_format}')
-        output_consolidated = args.output_consolidated or os.path.join(DATA_OUTPUT_DIR, f'consolidated.{args.output_format}')
+            print(f"{Colors.GREEN}Найдено {len(matches)} совпадений{Colors.ENDC}")
+            print(f"{Colors.GREEN}Консолидировано {len(consolidated)} записей{Colors.ENDC}")
         
         # Сохраняем результаты
-        if output_matches:
+        if args.output_matches:
             if args.output_format == 'json':
-                matcher.save_matches_to_json(matches, output_matches)
+                matcher.save_matches_to_json(matches, args.output_matches)
             else:
-                matcher.save_matches_to_csv(matches, output_matches)
+                matcher.save_matches_to_csv(matches, args.output_matches)
             
             if args.verbose:
-                print(f"Совпадения сохранены в {output_matches}")
+                print(f"{Colors.CYAN}Совпадения сохранены в {args.output_matches}{Colors.ENDC}")
         
-        if output_consolidated:
+        if args.output_consolidated:
             if args.output_format == 'json':
-                matcher.save_consolidated_to_json(consolidated, output_consolidated)
+                matcher.save_consolidated_to_json(consolidated, args.output_consolidated)
             else:
-                matcher.save_consolidated_to_csv(consolidated, output_consolidated)
+                matcher.save_consolidated_to_csv(consolidated, args.output_consolidated)
             
             if args.verbose:
-                print(f"Консолидированные данные сохранены в {output_consolidated}")
-        
-        if not output_matches and not output_consolidated:
-            # Выводим результаты на экран
-            print("\nНайденные совпадения:")
-            for i, match in enumerate(matches[:5]):
-                print(f"{i+1}. {match}")
-            
-            if len(matches) > 5:
-                print(f"... и еще {len(matches) - 5} совпадений")
+                print(f"{Colors.CYAN}Консолидированные данные сохранены в {args.output_consolidated}{Colors.ENDC}")
 
 
 if __name__ == '__main__':
