@@ -13,7 +13,7 @@ from typing import List, Dict, Tuple, Any, Optional, Union
 import fuzzy_matching.utils.transliteration.transliteration_utils as translit
 from fuzzy_matching.core.match_config_classes import (
     MatchConfig, MatchFieldConfig, TransliterationConfig, 
-    FuzzyAlgorithm, DomainSpecificAlgorithm
+    FuzzyAlgorithm
 )
 
 from collections import defaultdict
@@ -204,7 +204,7 @@ class DataMatcher:
                 value1, value2 = value1_trans, value2_trans
             
             # Вычисляем схожесть с учетом выбранного алгоритма для данного поля
-            similarity = self._get_similarity(value1, value2, field_config.fuzzy_algorithm, field_config.field_type)
+            similarity = self._get_similarity(value1, value2, field_config.fuzzy_algorithm)
             
             field_sims.append((field, value1, value2, similarity))
             similarities.append(similarity)
@@ -469,7 +469,7 @@ class DataMatcher:
         
         return matches, consolidated
     
-    def translate_data(self, data_list, target_lang='ru', fields=None):
+    def transliterate_data(self, data_list, target_lang='ru', fields=None):
         """
         Транслитерирует данные из одного языка в другой.
         
@@ -556,7 +556,7 @@ class DataMatcher:
                 
         return best_variant
 
-    def _get_similarity(self, str1, str2, fuzzy_algorithm=None, field_type=None):
+    def _get_similarity(self, str1, str2, fuzzy_algorithm=None):
         """
         Вычисляет нечеткую схожесть между двумя строками
         с использованием выбранного алгоритма.
@@ -564,7 +564,6 @@ class DataMatcher:
         :param str1: первая строка
         :param str2: вторая строка
         :param fuzzy_algorithm: алгоритм нечёткого сопоставления (если None, используется из конфигурации)
-        :param field_type: тип поля для выбора алгоритма из предметной области
         :return: степень схожести (0-1)
         """
         # Если строки пустые или обе None, возвращаем 0
@@ -576,12 +575,6 @@ class DataMatcher:
         
         # Определяем алгоритм для использования
         algorithm = fuzzy_algorithm  # Приоритет 1: явно указанный алгоритм для поля
-        
-        # Если не указан явный алгоритм, но указан тип поля и предметная область
-        if algorithm is None and field_type is not None and self.config.domain_algorithm is not None:
-            domain_algs = self.config.domain_algorithm.value
-            # Получаем алгоритм для указанного типа поля или 'default'
-            algorithm = domain_algs.get(field_type, domain_algs.get('default'))
         
         # Если всё еще нет алгоритма, используем общий из конфигурации
         if algorithm is None:

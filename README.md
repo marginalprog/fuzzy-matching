@@ -7,7 +7,7 @@
 - Нечеткое сопоставление строк с использованием различных алгоритмов
 - Поддержка транслитерации между русским и английским языками
 - Несколько стандартов транслитерации (ГОСТ, научная, паспортная)
-- Предметно-ориентированные алгоритмы для разных типов данных
+- Гибкая настройка алгоритмов сопоставления для разных типов полей
 - Блокировка для ускорения сопоставления больших наборов данных
 - Консолидация данных из разных источников
 
@@ -23,123 +23,161 @@ pip install -e .
 fuzzy_matching/
 ├── __init__.py
 ├── __main__.py
+├── api.py               # Программный интерфейс (API) библиотеки
 ├── cli/
 │   ├── __init__.py
-│   ├── main.py
-│   └── process_data.py
+│   ├── demo.py          # Демонстрационное меню с примерами
+│   ├── process_data.py  # Основной CLI-интерфейс
+│   └── generate_test_data.py  # Утилита для генерации тестовых данных
 ├── core/
 │   ├── __init__.py
-│   ├── data_matcher.py
-│   └── match_config_classes.py
+│   ├── data_matcher.py  # Основная логика сопоставления
+│   └── match_config_classes.py  # Классы конфигурации
 ├── utils/
 │   ├── __init__.py
-│   ├── data_generator.py
-│   └── transliteration/
+│   ├── cli_utils.py     # Утилиты для CLI
+│   ├── data_generator.py  # Генератор тестовых данных
+│   └── transliteration/  # Модуль транслитерации
 │       ├── __init__.py
 │       └── transliteration_utils.py
-├── examples/
+├── examples/            # Примеры использования
 │   ├── __init__.py
-│   ├── algorithm_comparison_example.py
-│   ├── domain_specific_example.py
-│   ├── simple_example.py
-│   └── transliteration_example.py
-├── tests/
-│   ├── __init__.py
-│   ├── test_data_matcher.py
-│   └── test_transliteration.py
-└── results/
-    ├── reports/
-    ├── анализ_результатов.md
-    └── *.png
+│   ├── api_example.py
+│   └── domain_specific_example.py
+└── tests/               # Тесты
+    ├── __init__.py
+    └── test_transliteration.py
 ```
 
 ## Использование
 
-### Командная строка
+### Через командную строку (CLI)
 
-```bash
-# Запуск интерактивного меню
-python -m fuzzy_matching
-
-# Запуск конкретного примера
-python -m fuzzy_matching transliteration
-python -m fuzzy_matching transliteration_matching
-```
-
-### Сопоставление данных из файлов
+#### Сопоставление данных
 
 ```bash
 python -m fuzzy_matching.cli.process_data --mode match \
-    --input1 dataset1.csv --format1 csv \
-    --input2 dataset2.csv --format2 csv \
+    --input1 data/file1.json --format1 json \
+    --input2 data/file2.json --format2 json \
+    --match-fields "Фамилия:0.6:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.1:true:RATIO" \
+    --threshold 0.7 \
     --output-matches matches.json \
     --output-consolidated consolidated.json \
-    --threshold 0.8 \
-    --block-field Фамилия \
-    --domain person
+    --verbose
 ```
 
-### Транслитерация данных из файла
+#### Транслитерация данных
 
 ```bash
 python -m fuzzy_matching.cli.process_data --mode transliterate \
-    --input1 russian_names.json --format1 json \
+    --input1 data/input.json --format1 json \
     --target-lang en \
-    --output-consolidated english_names.json
+    --transliterate-fields "Фамилия,Имя,Отчество" \
+    --output-consolidated transliterated.json \
+    --verbose
 ```
 
-## Примеры кода
+#### Генерация тестовых данных
 
-### Простое сопоставление
+```bash
+python -m fuzzy_matching.cli.process_data --mode generate \
+    --output-original original.json \
+    --output-variant variant.json \
+    --record-count 100 \
+    --typo-probability 0.1 \
+    --field-swap-probability 0.05 \
+    --verbose
+```
+
+### Через API
 
 ```python
-from fuzzy_matching.core.data_matcher import DataMatcher
-from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig
+from fuzzy_matching.api import create_config, match_datasets, transliterate_dataset, generate_test_datasets
 
 # Создаем конфигурацию
-config = MatchConfig(
+config = create_config(
     fields=[
-        MatchFieldConfig(field='Фамилия', weight=0.4, transliterate=True),
-        MatchFieldConfig(field='Имя', weight=0.3, transliterate=True),
-        MatchFieldConfig(field='Отчество', weight=0.2, transliterate=True),
-        MatchFieldConfig(field='email', weight=0.1, transliterate=False)
+        {"field": "Фамилия", "weight": 0.6, "transliterate": True, "algorithm": "TOKEN_SORT"},
+        {"field": "Имя", "weight": 0.3, "transliterate": True, "algorithm": "PARTIAL_RATIO"},
+        {"field": "Отчество", "weight": 0.1, "transliterate": True, "algorithm": "RATIO"}
     ],
-    threshold=0.7
+    threshold=0.7,
+    transliteration_enabled=True
 )
 
-# Создаем экземпляр DataMatcher
-matcher = DataMatcher(config=config)
+# Сопоставляем наборы данных
+matches, consolidated = match_datasets(
+    dataset1="data/file1.json", 
+    dataset2="data/file2.json",
+    config=config
+)
 
-# Данные для сопоставления
-data1 = [
-    {'Фамилия': 'Иванов', 'Имя': 'Александр', 'Отчество': 'Сергеевич', 'email': 'ivanov@example.ru'},
-    {'Фамилия': 'Петров', 'Имя': 'Иван', 'Отчество': 'Петрович', 'email': 'petrov@example.ru'}
-]
-
-data2 = [
-    {'Фамилия': 'Иванов', 'Имя': 'Александр', 'Отчество': 'Сергеевич', 'email': 'ivanov@example.com'},
-    {'Фамилия': 'Петров', 'Имя': 'Иван', 'Отчество': 'Петрович', 'email': 'petrov@example.com'}
-]
-
-# Выполняем сопоставление
-matches, consolidated = matcher.match_and_consolidate(data1, data2)
-
-# Выводим результаты
-print(f"Найдено {len(matches)} совпадений")
-print(f"Консолидировано {len(consolidated)} записей")
+# Сохраняем результаты
+from fuzzy_matching.api import save_results
+save_results(matches, consolidated, "matches.json", "consolidated.json")
 ```
 
-### Транслитерация
+## Алгоритмы нечеткого сопоставления
 
-```python
-from fuzzy_matching.utils.transliteration.transliteration_utils import transliterate_ru_to_en, PASSPORT_STANDARD
+В библиотеке доступны следующие алгоритмы нечеткого сопоставления:
 
-# Транслитерация с русского на английский
-ru_name = "Иванов Александр Сергеевич"
-en_name = transliterate_ru_to_en(ru_name, PASSPORT_STANDARD)
-print(f"{ru_name} -> {en_name}")  # Иванов Александр Сергеевич -> ivanov aleksandr sergeevich
+- **RATIO**: Базовый алгоритм Левенштейна (хорош для коротких строк и точных совпадений)
+- **PARTIAL_RATIO**: Находит наилучшее совпадение подстроки (подходит для имен: Иван/Ваня)
+- **TOKEN_SORT**: Сортирует слова перед сравнением (хорош для адресов, двойных фамилий)
+- **TOKEN_SET**: Сравнивает множества слов (лучший для перемешанных слов и порядка)
+- **WRatio**: Взвешенный комбинированный результат (универсальный алгоритм)
+
+### Рекомендации по выбору алгоритмов
+
+#### Для персональных данных
+- **Имена**: `PARTIAL_RATIO` (учитывает уменьшительные формы, вариации написания)
+- **Фамилии**: `TOKEN_SORT` (хорошо работает с составными фамилиями)
+- **Отчества**: `RATIO` (обычно требуется точное совпадение)
+- **Адреса**: `TOKEN_SET` (учитывает перестановку слов, разный порядок компонентов)
+- **Email/телефоны**: `RATIO` (требуется высокая точность)
+
+#### Для бизнес-данных
+- **Названия компаний**: `TOKEN_SET` (порядок слов часто меняется, например "ООО Ромашка" и "Ромашка ООО")
+- **Юридические названия**: `TOKEN_SORT` (важен порядок слов, но могут быть сокращения)
+- **ИНН/КПП/ОГРН**: `RATIO` (требуется точное совпадение)
+- **Товарные позиции**: `TOKEN_SET` (описания могут иметь разный порядок характеристик)
+
+#### Для технических данных
+- **Серийные номера**: `RATIO` (требуется точность, допустимы небольшие опечатки)
+- **Артикулы товаров**: `RATIO` (требуется точность)
+- **Технические описания**: `TOKEN_SET` (порядок элементов может варьироваться)
+- **Коды ошибок**: `RATIO` (точное сопоставление)
+- **URL-адреса**: `PARTIAL_RATIO` (учитывает общую часть URL)
+- **Логи и трассировки**: `TOKEN_SORT` (сортировка помогает при разном порядке элементов)
+
+#### Для научных данных
+- **Химические формулы**: `TOKEN_SORT` (порядок элементов может меняться, но важен состав)
+- **Научные термины**: `PARTIAL_RATIO` (может иметь вариации написания)
+- **Библиографические ссылки**: `TOKEN_SET` (порядок авторов и элементов может варьироваться)
+- **Классификационные коды**: `RATIO` (требуется точное совпадение)
+
+#### Для многоязычных данных
+- **Транслитерированные имена**: `PARTIAL_RATIO` (с transliterate=True)
+- **Переведенные названия**: `TOKEN_SET` (порядок слов часто меняется при переводе)
+- **Смешанные тексты**: `WRatio` (универсальный алгоритм с весовыми коэффициентами)
+
+#### Общие рекомендации
+- Для полей с короткими значениями (до 5 символов): `RATIO`
+- Для полей с полными предложениями: `TOKEN_SET`
+- Для полей, где важен порядок слов: `TOKEN_SORT`
+- Для полей, где важна только общая часть: `PARTIAL_RATIO`
+- Если не уверены, какой алгоритм выбрать: `WRatio` (комбинированный алгоритм)
+
+## Интерактивное демо
+
+Для запуска интерактивного меню с примерами:
+
+```bash
+python -m fuzzy_matching.cli.demo
+# или
+python -m fuzzy_matching
 ```
 
-## Лицензия
+## Дополнительная документация
 
-MIT 
+Полная документация доступна в коде каждого модуля и класса. 

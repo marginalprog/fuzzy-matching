@@ -266,11 +266,11 @@ def demo_transliteration():
     
     # Демонстрация транслитерации данных
     print("\nТранслитерация русских данных на английский:")
-    transliterated_en = matcher.translate_data(russian_data, target_lang='en')
+    transliterated_en = matcher.transliterate_data(russian_data, target_lang='en')
     print_table(transliterated_en)
     
     print("\nТранслитерация английских данных на русский:")
-    transliterated_ru = matcher.translate_data(english_data, target_lang='ru')
+    transliterated_ru = matcher.transliterate_data(english_data, target_lang='ru')
     print_table(transliterated_ru)
     
     return matcher, matches, consolidated
