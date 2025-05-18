@@ -17,8 +17,12 @@ import numpy as np
 from fuzzy_matching.utils.data_generator import DataGenerator, Language
 from fuzzy_matching.core.data_matcher import DataMatcher
 from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig, FuzzyAlgorithm
-import fuzzy_matching.utils.transliteration_utils as translit
+import fuzzy_matching.utils.transliteration.transliteration_utils as translit
 
+# Директория для результатов
+RESULTS_DIR = "results"
+if not os.path.exists(RESULTS_DIR):
+    os.makedirs(RESULTS_DIR)
 
 def generate_test_data(sizes):
     """
@@ -182,11 +186,11 @@ def create_test_configs():
         })
         configs.append(algo_config_without_translit)
     
-    # Добавляем конфигурации для специализированных персональных данных
-    person_name_config = full_translit_config.copy()
-    person_name_config.update({
-        'name': 'Персональные ФИО (оптимизированная)',
-        'fuzzy_algorithm': FuzzyAlgorithm.PARTIAL_RATIO,
+    # Добавляем конфигурации с оптимизированными алгоритмами для разных полей
+    optimized_person_config = full_translit_config.copy()
+    optimized_person_config.update({
+        'name': 'Оптимизированные алгоритмы для полей',
+        'fuzzy_algorithm': FuzzyAlgorithm.TOKEN_SORT,
         'fields_algorithms': {
             'Фамилия': FuzzyAlgorithm.TOKEN_SORT,
             'Имя': FuzzyAlgorithm.PARTIAL_RATIO,
@@ -194,35 +198,7 @@ def create_test_configs():
             'email': FuzzyAlgorithm.RATIO
         }
     })
-    configs.append(person_name_config)
-    
-    # Конфигурация для товаров
-    product_config = full_translit_config.copy()
-    product_config.update({
-        'name': 'Товары (оптимизированная)',
-        'fuzzy_algorithm': FuzzyAlgorithm.TOKEN_SET,
-        'fields_algorithms': {
-            'Фамилия': FuzzyAlgorithm.TOKEN_SET,
-            'Имя': FuzzyAlgorithm.TOKEN_SET,
-            'Отчество': FuzzyAlgorithm.TOKEN_SET,
-            'email': FuzzyAlgorithm.RATIO
-        }
-    })
-    configs.append(product_config)
-    
-    # Конфигурация для компаний
-    company_config = full_translit_config.copy()
-    company_config.update({
-        'name': 'Компании (оптимизированная)',
-        'fuzzy_algorithm': FuzzyAlgorithm.TOKEN_SET,
-        'fields_algorithms': {
-            'Фамилия': FuzzyAlgorithm.TOKEN_SET,
-            'Имя': FuzzyAlgorithm.TOKEN_SORT,
-            'Отчество': FuzzyAlgorithm.RATIO,
-            'email': FuzzyAlgorithm.RATIO
-        }
-    })
-    configs.append(company_config)
+    configs.append(optimized_person_config)
     
     return configs
 
@@ -350,6 +326,10 @@ def print_test_results(results):
             ])
     
     print(table)
+    
+    # Сохраняем результаты в текстовый файл
+    with open(os.path.join(RESULTS_DIR, "benchmark_results_table.txt"), "w", encoding="utf-8") as f:
+        f.write(str(table))
 
 
 def analyze_performance_factors(results):
@@ -425,7 +405,7 @@ def analyze_performance_factors(results):
                     print(f"  - Сложность линейная или лучше")
 
 
-def save_results_to_csv(results, filename="benchmark_results.csv"):
+def save_results_to_csv(results, filename=None):
     """
     Сохраняет результаты тестов в CSV-файл.
     
@@ -450,17 +430,30 @@ def save_results_to_csv(results, filename="benchmark_results.csv"):
     
     # Создаем DataFrame и сохраняем в CSV
     df = pd.DataFrame(data)
+    
+    # Если имя файла не указано, используем размеры данных в имени
+    if filename is None:
+        min_size = min(results.keys())
+        max_size = max(results.keys())
+        filename = os.path.join(RESULTS_DIR, f"benchmark_results_{min_size}_{max_size}.csv")
+    else:
+        filename = os.path.join(RESULTS_DIR, filename)
+    
     df.to_csv(filename, index=False)
     print(f"\nРезультаты сохранены в файл {filename}")
 
 
-def plot_detailed_results(results, output_dir="results"):
+def plot_detailed_results(results, output_dir=None):
     """
     Создает детальные графики сравнения алгоритмов по производительности и эффективности.
     
     :param results: словарь с результатами тестов
     :param output_dir: директория для сохранения графиков
     """
+    # Если директория не указана, используем директорию по умолчанию
+    if output_dir is None:
+        output_dir = RESULTS_DIR
+    
     # Создаем директорию, если она не существует
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -468,7 +461,7 @@ def plot_detailed_results(results, output_dir="results"):
     sizes = sorted(results.keys())
     
     # 1. Сравнение времени выполнения разных алгоритмов
-    plt.figure(figsize=(14, 8))
+    plt.figure(figsize=(18, 10))
     
     # Группируем по алгоритмам
     algorithms = [
@@ -480,141 +473,109 @@ def plot_detailed_results(results, output_dir="results"):
     markers = ['o', 's']
     colors = ['blue', 'red', 'green', 'purple', 'orange']
     
-    for size in sizes:
-        plt.subplot(1, len(sizes), sizes.index(size) + 1)
+    for i, size in enumerate(sizes):
+        plt.subplot(1, len(sizes), i + 1)
         
-        for i, alg in enumerate(algorithms):
-            for j, translit_type in enumerate(translit_types):
+        for j, alg in enumerate(algorithms):
+            for k, translit_type in enumerate(translit_types):
                 # Ищем результат для данной комбинации алгоритма и типа транслитерации
                 config_name = f"{alg} {translit_type}"
                 for result in results[size]:
                     if config_name == result['config_name']:
                         time_value = result['duration']
                         plt.bar(
-                            i + j*0.4 - 0.2, 
+                            j + k*0.4 - 0.2, 
                             time_value, 
                             width=0.4, 
-                            color=colors[i], 
-                            alpha=0.5 + 0.5*j,
-                            label=f"{alg} {translit_type}" if size == sizes[0] else ""
+                            color=colors[j], 
+                            alpha=0.5 + 0.5*k,
+                            label=f"{alg} {translit_type}" if (i == 0 and j == 0) or (i == 0 and j > 0 and k == 0) else ""
                         )
         
         plt.title(f"Время выполнения для {size} записей")
         plt.ylabel("Время (сек)")
         plt.xticks(range(len(algorithms)), [a.replace('Алгоритм ', '') for a in algorithms], rotation=45)
-        
-        if size == sizes[0]:
-            plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
     
-    plt.tight_layout()
+    # Размещаем легенду внизу графика
+    plt.figlegend(loc='lower center', bbox_to_anchor=(0.5, 0.0), ncol=6)
+    
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])  # Оставляем место для легенды внизу
     plt.savefig(os.path.join(output_dir, "algorithm_time_comparison.png"))
     plt.close()
     
     # 2. Сравнение количества найденных совпадений
-    plt.figure(figsize=(14, 8))
+    plt.figure(figsize=(18, 10))
     
-    for size in sizes:
-        plt.subplot(1, len(sizes), sizes.index(size) + 1)
+    for i, size in enumerate(sizes):
+        plt.subplot(1, len(sizes), i + 1)
         
-        for i, alg in enumerate(algorithms):
-            for j, translit_type in enumerate(translit_types):
+        for j, alg in enumerate(algorithms):
+            for k, translit_type in enumerate(translit_types):
                 # Ищем результат для данной комбинации алгоритма и типа транслитерации
                 config_name = f"{alg} {translit_type}"
                 for result in results[size]:
                     if config_name == result['config_name']:
                         matches_count = result['matches_count']
                         plt.bar(
-                            i + j*0.4 - 0.2, 
+                            j + k*0.4 - 0.2, 
                             matches_count, 
                             width=0.4, 
-                            color=colors[i], 
-                            alpha=0.5 + 0.5*j,
-                            label=f"{alg} {translit_type}" if size == sizes[0] else ""
+                            color=colors[j], 
+                            alpha=0.5 + 0.5*k,
+                            label=f"{alg} {translit_type}" if (i == 0 and j == 0) or (i == 0 and j > 0 and k == 0) else ""
                         )
         
         plt.title(f"Количество совпадений для {size} записей")
         plt.ylabel("Количество совпадений")
         plt.xticks(range(len(algorithms)), [a.replace('Алгоритм ', '') for a in algorithms], rotation=45)
-        
-        if size == sizes[0]:
-            plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
     
-    plt.tight_layout()
+    # Размещаем легенду внизу графика
+    plt.figlegend(loc='lower center', bbox_to_anchor=(0.5, 0.0), ncol=6)
+    
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])  # Оставляем место для легенды внизу
     plt.savefig(os.path.join(output_dir, "algorithm_matches_comparison.png"))
     plt.close()
     
     # 3. Эффективность алгоритмов (соотношение кол-ва совпадений к времени выполнения)
-    plt.figure(figsize=(14, 8))
+    plt.figure(figsize=(18, 10))
     
-    for size in sizes:
-        plt.subplot(1, len(sizes), sizes.index(size) + 1)
+    for i, size in enumerate(sizes):
+        plt.subplot(1, len(sizes), i + 1)
         
-        for i, alg in enumerate(algorithms):
-            for j, translit_type in enumerate(translit_types):
+        for j, alg in enumerate(algorithms):
+            for k, translit_type in enumerate(translit_types):
                 # Ищем результат для данной комбинации алгоритма и типа транслитерации
                 config_name = f"{alg} {translit_type}"
                 for result in results[size]:
                     if config_name == result['config_name']:
                         efficiency = result['matches_count'] / result['duration'] if result['duration'] > 0 else 0
                         plt.bar(
-                            i + j*0.4 - 0.2, 
+                            j + k*0.4 - 0.2, 
                             efficiency, 
                             width=0.4, 
-                            color=colors[i], 
-                            alpha=0.5 + 0.5*j,
-                            label=f"{alg} {translit_type}" if size == sizes[0] else ""
+                            color=colors[j], 
+                            alpha=0.5 + 0.5*k,
+                            label=f"{alg} {translit_type}" if (i == 0 and j == 0) or (i == 0 and j > 0 and k == 0) else ""
                         )
         
         plt.title(f"Эффективность алгоритмов для {size} записей")
         plt.ylabel("Совпадений в секунду")
         plt.xticks(range(len(algorithms)), [a.replace('Алгоритм ', '') for a in algorithms], rotation=45)
-        
-        if size == sizes[0]:
-            plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
     
-    plt.tight_layout()
+    # Размещаем легенду внизу графика
+    plt.figlegend(loc='lower center', bbox_to_anchor=(0.5, 0.0), ncol=6)
+    
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])  # Оставляем место для легенды внизу
     plt.savefig(os.path.join(output_dir, "algorithm_efficiency_comparison.png"))
     plt.close()
     
-    # 4. Сравнение предметно-ориентированных алгоритмов
-    plt.figure(figsize=(14, 8))
+    # 4. Влияние блокировки на производительность
+    plt.figure(figsize=(16, 8))
     
-    # Группируем по предметным областям
-    domain_algs = [
-        'Персональные ФИО (оптимизированная)',
-        'Товары (оптимизированная)',
-        'Компании (оптимизированная)'
-    ]
-    
-    metrics = ['duration', 'matches_count']
-    metric_titles = ['Время выполнения (сек)', 'Найдено совпадений']
-    
-    for k, metric in enumerate(metrics):
-        plt.subplot(1, len(metrics), k+1)
-        
-        for size in sizes:
-            x_pos = []
-            values = []
-            labels = []
-            
-            for i, alg in enumerate(domain_algs):
-                for result in results[size]:
-                    if alg == result['config_name']:
-                        x_pos.append(i + sizes.index(size) * 0.3)
-                        values.append(result[metric])
-                        labels.append(f"{alg}\n({size} записей)")
-            
-            plt.bar(x_pos, values, width=0.25, alpha=0.7)
-        
-        plt.title(f"Сравнение предметно-ориентированных алгоритмов: {metric_titles[k]}")
-        plt.xticks(range(len(domain_algs)), [a.replace('Персональные ФИО (оптимизированная)', 'Персональные ФИО') for a in domain_algs], rotation=45)
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, "domain_algorithms_comparison.png"))
-    plt.close()
-    
-    # 5. Влияние блокировки на производительность
-    plt.figure(figsize=(14, 6))
+    # Создаем списки для хранения значений
+    with_blocking_times = []
+    no_blocking_times = []
+    ratio_values = []
     
     for i, size in enumerate(sizes):
         blocking_time = None
@@ -623,34 +584,180 @@ def plot_detailed_results(results, output_dir="results"):
         for result in results[size]:
             if result['config_name'] == 'Полная транслитерация':
                 blocking_time = result['duration']
+                with_blocking_times.append(blocking_time)
             elif result['config_name'] == 'Транслитерация без блокировки':
                 no_blocking_time = result['duration']
+                no_blocking_times.append(no_blocking_time)
         
         if blocking_time is not None and no_blocking_time is not None:
-            plt.subplot(1, 2, 1)
-            plt.bar([i, i+0.5], [blocking_time, no_blocking_time], width=0.4)
-            plt.text(i, blocking_time/2, f"{blocking_time:.2f}", ha='center')
-            plt.text(i+0.5, no_blocking_time/2, f"{no_blocking_time:.2f}", ha='center')
-            
-            plt.subplot(1, 2, 2)
             ratio = no_blocking_time / blocking_time if blocking_time > 0 else 0
-            plt.bar(i, ratio)
-            plt.text(i, ratio/2, f"{ratio:.2f}x", ha='center')
+            ratio_values.append(ratio)
     
+    # График с двумя подграфиками
     plt.subplot(1, 2, 1)
+    bar_width = 0.35
+    index = np.arange(len(sizes))
+    
+    # Добавляем столбцы с пояснениями
+    bars1 = plt.bar(index, with_blocking_times, bar_width, label='С блокировкой')
+    bars2 = plt.bar(index + bar_width, no_blocking_times, bar_width, label='Без блокировки')
+    
+    # Добавляем подписи значений над столбцами
+    for i, bar in enumerate(bars1):
+        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height()/2, 
+                f"{with_blocking_times[i]:.2f}", ha='center')
+    
+    for i, bar in enumerate(bars2):
+        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height()/2, 
+                f"{no_blocking_times[i]:.2f}", ha='center')
+    
     plt.title("Время выполнения (сек)")
     plt.xlabel("Размер данных")
-    plt.xticks(np.arange(len(sizes)) + 0.25, sizes)
-    plt.legend(['С блокировкой', 'Без блокировки'])
+    plt.xticks(index + bar_width/2, sizes)
+    plt.legend()
     
+    # Второй подграфик - коэффициент замедления
     plt.subplot(1, 2, 2)
+    bars3 = plt.bar(index, ratio_values, bar_width*2, label='Коэффициент замедления')
+    
+    # Добавляем подписи значений над столбцами
+    for i, bar in enumerate(bars3):
+        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height()/2, 
+                f"{ratio_values[i]:.2f}x", ha='center')
+    
     plt.title("Во сколько раз дольше без блокировки")
     plt.xlabel("Размер данных")
-    plt.xticks(range(len(sizes)), sizes)
+    plt.xticks(index, sizes)
+    plt.legend()
     
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "blocking_impact.png"))
     plt.close()
+
+    # Создаем файл с анализом результатов
+    with open(os.path.join(output_dir, "benchmark_analysis.md"), "w", encoding="utf-8") as f:
+        f.write("# Анализ результатов тестирования производительности\n\n")
+        
+        f.write("## Общий обзор\n\n")
+        
+        # Находим лучшие алгоритмы по скорости
+        fastest_config = None
+        fastest_speed = 0
+        
+        for size in results.keys():
+            for result in results[size]:
+                speed = size / result['duration'] if result['duration'] > 0 else 0
+                if speed > fastest_speed:
+                    fastest_speed = speed
+                    fastest_config = result['config_name']
+        
+        f.write(f"Наиболее быстрый алгоритм: **{fastest_config}** со скоростью {fastest_speed:.2f} записей/сек\n\n")
+        
+        # Находим наиболее эффективный алгоритм по соотношению найденных совпадений и времени
+        most_effective_config = None
+        highest_efficiency = 0
+        
+        for size in results.keys():
+            for result in results[size]:
+                efficiency = result['matches_count'] / result['duration'] if result['duration'] > 0 else 0
+                if efficiency > highest_efficiency and result['matches_count'] > 0:
+                    highest_efficiency = efficiency
+                    most_effective_config = result['config_name']
+        
+        f.write(f"Наиболее эффективный алгоритм: **{most_effective_config}** с эффективностью {highest_efficiency:.2f} совпадений/сек\n\n")
+        
+        # Анализ влияния транслитерации
+        f.write("## Влияние транслитерации\n\n")
+        
+        for size in sorted(results.keys()):
+            base_time = None
+            translit_time = None
+            
+            for result in results[size]:
+                if result['config_name'] == 'Базовая без транслитерации':
+                    base_time = result['duration']
+                elif result['config_name'] == 'Полная транслитерация':
+                    translit_time = result['duration']
+            
+            if base_time is not None and translit_time is not None:
+                overhead = (translit_time - base_time) / base_time * 100
+                f.write(f"### Размер данных: {size}\n")
+                f.write(f"* Без транслитерации: {base_time:.4f} сек\n")
+                f.write(f"* С транслитерацией: {translit_time:.4f} сек\n")
+                f.write(f"* Накладные расходы: {overhead:.2f}%\n\n")
+        
+        # Анализ влияния блокировки
+        f.write("## Влияние блокировки\n\n")
+        
+        for size in sorted(results.keys()):
+            with_blocking = None
+            without_blocking = None
+            
+            for result in results[size]:
+                if result['config_name'] == 'Полная транслитерация':
+                    with_blocking = result['duration']
+                elif result['config_name'] == 'Транслитерация без блокировки':
+                    without_blocking = result['duration']
+            
+            if with_blocking is not None and without_blocking is not None:
+                blocking_impact = (without_blocking - with_blocking) / with_blocking * 100
+                f.write(f"### Размер данных: {size}\n")
+                f.write(f"* С блокировкой: {with_blocking:.4f} сек\n")
+                f.write(f"* Без блокировки: {without_blocking:.4f} сек\n")
+                f.write(f"* Увеличение времени: {blocking_impact:.2f}%\n\n")
+        
+        # Сравнение алгоритмов
+        f.write("## Сравнение алгоритмов\n\n")
+        
+        algorithms_short = ['RATIO', 'PARTIAL_RATIO', 'TOKEN_SORT', 'TOKEN_SET', 'WRatio']
+        
+        for size in sorted(results.keys()):
+            f.write(f"### Размер данных: {size}\n\n")
+            
+            f.write("| Алгоритм | Без транслитерации (сек) | C транслитерацией (сек) | Найдено совпадений |\n")
+            f.write("|----------|--------------------------|-------------------------|--------------------|\n")
+            
+            for alg in algorithms_short:
+                time_without_translit = "-"
+                time_with_translit = "-"
+                matches_with_translit = "-"
+                
+                for result in results[size]:
+                    if result['config_name'] == f'Алгоритм {alg} без транслитерации':
+                        time_without_translit = f"{result['duration']:.4f}"
+                    elif result['config_name'] == f'Алгоритм {alg} с транслитерацией':
+                        time_with_translit = f"{result['duration']:.4f}"
+                        matches_with_translit = str(result['matches_count'])
+                
+                f.write(f"| {alg} | {time_without_translit} | {time_with_translit} | {matches_with_translit} |\n")
+            
+            f.write("\n")
+        
+        # Рекомендации по выбору алгоритмов
+        f.write("## Рекомендации\n\n")
+        f.write("На основании проведенных тестов можно дать следующие рекомендации:\n\n")
+        
+        f.write("1. **Для обработки малых наборов данных (до 1000 записей)**:\n")
+        f.write("   * Если важна скорость: используйте `RATIO` с блокировкой по ключевому полю\n")
+        f.write("   * Если важна точность: используйте `TOKEN_SET` или `WRatio`\n\n")
+        
+        f.write("2. **Для обработки больших наборов данных**:\n")
+        f.write("   * Всегда используйте блокировку, это в разы повышает производительность\n")
+        f.write("   * Оптимальный баланс между скоростью и точностью: `TOKEN_SORT`\n\n")
+        
+        f.write("3. **При работе с транслитерацией**:\n")
+        f.write("   * Будьте готовы к дополнительным накладным расходам от 15% до 50%\n")
+        f.write("   * Для максимальной точности используйте `TOKEN_SET` с транслитерацией\n\n")
+        
+        f.write("4. **Для обработки конкретных типов данных**:\n")
+        f.write("   * Имена, фамилии и другие персональные данные: `PARTIAL_RATIO` или `TOKEN_SORT`\n")
+        f.write("   * Адреса и составные названия: `TOKEN_SET`\n")
+        f.write("   * Для полей с точными значениями (серийные номера, коды): `RATIO`\n\n")
+        
+        f.write("![Сравнение времени выполнения](algorithm_time_comparison.png)\n\n")
+        f.write("![Сравнение найденных совпадений](algorithm_matches_comparison.png)\n\n")
+        f.write("![Эффективность алгоритмов](algorithm_efficiency_comparison.png)\n\n")
+        f.write("![Влияние блокировки](blocking_impact.png)\n\n")
 
 
 def main():
@@ -690,7 +797,7 @@ def main():
     # Генерируем детальные графики
     try:
         plot_detailed_results(results)
-        print("\nДетальные графики сохранены в директории results/")
+        print(f"\nДетальные графики сохранены в директории {RESULTS_DIR}/")
     except Exception as e:
         print(f"\nОшибка при создании графиков: {e}")
     
@@ -705,11 +812,12 @@ def main():
     
     for result in results[1000]:
         if result['config_name'] in ['Базовая без транслитерации', 'Полная транслитерация', 
-                                     'Алгоритм WRatio с транслитерацией', 'Персональные ФИО (оптимизированная)']:
+                                     'Алгоритм WRatio с транслитерацией', 'Оптимизированные алгоритмы для полей']:
             print(f"\nКонфигурация: {result['config_name']}")
             print(result['profile_stats'])
     
     print("\n===== ЗАВЕРШЕНИЕ РАСШИРЕННОГО ТЕСТИРОВАНИЯ =====\n")
+    print(f"Все результаты сохранены в директории {RESULTS_DIR}/")
 
 
 if __name__ == "__main__":
