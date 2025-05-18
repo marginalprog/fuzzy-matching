@@ -92,6 +92,30 @@ python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --t
 - `Телефон` - номер телефона
 - `Пол` - пол (м/ж)
 
+**Важно:** Генератор поддерживает только перечисленные выше поля с точно такими же наименованиями. При сопоставлении данных из внешних источников убедитесь, что имена полей соответствуют ожидаемым или используйте маппинг полей через параметр `--name-fields`.
+
+### Работа с CSV-файлами
+
+При использовании CSV-файлов вместо JSON, указывайте соответствующий формат с помощью параметров `--format1 csv` и `--format2 csv`. Для корректной работы с CSV-файлами важно, чтобы:
+
+1. Заголовки столбцов соответствовали ожидаемым именам полей (`id`, `Фамилия`, `Имя`, `Отчество`, `Email`, `Телефон`, `Пол`)
+2. Файл был в кодировке UTF-8
+3. При необходимости использовался маппинг полей через параметр `--name-fields`
+
+Обратите внимание, что регистр и точное написание имен полей имеют значение. Например, поле должно называться `Фамилия`, а не `фамилия` или `ФАМИЛИЯ`.
+
+Пример использования с CSV:
+
+```bash
+python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.csv --format1 csv --input2 data/input/variant.csv --format2 csv --match-fields "Фамилия:0.4:false:TOKEN_SORT,Имя:0.3:false:PARTIAL_RATIO,Отчество:0.2:false:RATIO,Email:0.1:false:RATIO" --threshold 0.7 --output-matches data/output/matches.json --output-consolidated data/output/consolidated.csv --output-format csv --verbose
+```
+
+Если ваши CSV-файлы имеют другие имена столбцов, используйте параметр `--name-fields` для маппинга:
+
+```bash
+python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.csv --format1 csv --input2 data/input/variant.csv --format2 csv --name-fields "surname:Фамилия,name:Имя,patronymic:Отчество,mail:Email" --match-fields "Фамилия:0.4:false:TOKEN_SORT,Имя:0.3:false:PARTIAL_RATIO,Отчество:0.2:false:RATIO,Email:0.1:false:RATIO" --threshold 0.7 --output-consolidated data/output/consolidated.csv --output-format csv
+```
+
 ### Через API
 
 ```python

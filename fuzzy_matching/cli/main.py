@@ -42,7 +42,7 @@ def main():
                 # Вызываем CLI для сопоставления данных
                 print("\nЗапуск утилиты сопоставления данных...")
                 print("Пример команды (скопируйте и вставьте в терминал):")
-                print("python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/variant.json --format2 json --match-fields \"Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,Email:0.1:false:RATIO\" --threshold 0.7 --output-matches data/output/matches.json --output-consolidated data/output/consolidated.json --verbose")
+                print("python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/variant.json --format2 json --match-fields \"Фамилия:0.4:false:TOKEN_SORT,Имя:0.3:false:PARTIAL_RATIO,Отчество:0.2:false:RATIO,email:0.1:false:RATIO\" --threshold 0.7 --output-matches data/output/matches.json --output-consolidated data/output/consolidated.json --verbose")
                 cmd = input("\nВведите команду или нажмите Enter для возврата в меню: ")
                 if cmd.strip():
                     os.system(cmd)
@@ -60,7 +60,7 @@ def main():
                 # Вызываем CLI для генерации тестовых данных
                 print("\nЗапуск утилиты генерации тестовых данных...")
                 print("Пример команды (скопируйте и вставьте в терминал):")
-                print("python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --typo-probability 0.1 --character-probability 0.05 --generate-fields \"id,Фамилия,Имя,Отчество,Email\" --output-original data/input/test_original.json --output-variant data/input/test_variant.json --verbose")
+                print("python -m fuzzy_matching.cli.process_data --mode generate --record-count 5 --typo-probability 0.05 --character-probability 0.02 --generate-fields \"id,Фамилия,Имя,Отчество,Email\" --output-original data/input/test_original.json --output-variant data/input/test_variant.json --verbose")
                 cmd = input("\nВведите команду или нажмите Enter для возврата в меню: ")
                 if cmd.strip():
                     os.system(cmd)

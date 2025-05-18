@@ -51,6 +51,15 @@ DATA_OUTPUT_DIR = 'data/output'
 os.makedirs(DATA_INPUT_DIR, exist_ok=True)
 os.makedirs(DATA_OUTPUT_DIR, exist_ok=True)
 
+# Создаем скрытый файл в директории, чтобы git не игнорировал пустую директорию
+if not os.listdir(DATA_INPUT_DIR):
+    with open(os.path.join(DATA_INPUT_DIR, '.gitkeep'), 'w') as f:
+        f.write('# Эта директория используется для хранения входных данных\n')
+
+if not os.listdir(DATA_OUTPUT_DIR):
+    with open(os.path.join(DATA_OUTPUT_DIR, '.gitkeep'), 'w') as f:
+        f.write('# Эта директория используется для хранения результатов обработки\n')
+
 def parse_name_fields(fields_str):
     """
     Парсит строку с соответствием полей в формате 'source1:target1,source2:target2'
@@ -58,11 +67,13 @@ def parse_name_fields(fields_str):
     """
     if not fields_str:
         return {
-            'last_name': 'Фамилия',
-            'first_name': 'Имя',
-            'middle_name': 'Отчество',
+            'id': 'id',
+            'Фамилия': 'Фамилия',
+            'Имя': 'Имя',
+            'Отчество': 'Отчество',
+            'Email': 'Email',
             'email': 'email',
-            'phone': 'Телефон'
+            'Телефон': 'Телефон'
         }
     
     name_fields = {}
@@ -85,9 +96,9 @@ def parse_match_fields(fields_str):
     """
     if not fields_str:
         return [
-            MatchFieldConfig(field='Фамилия', weight=0.4, transliterate=True),
-            MatchFieldConfig(field='Имя', weight=0.3, transliterate=True),
-            MatchFieldConfig(field='Отчество', weight=0.2, transliterate=True),
+            MatchFieldConfig(field='Фамилия', weight=0.4, transliterate=False),
+            MatchFieldConfig(field='Имя', weight=0.3, transliterate=False),
+            MatchFieldConfig(field='Отчество', weight=0.2, transliterate=False),
             MatchFieldConfig(field='email', weight=0.1, transliterate=False)
         ]
     
@@ -271,6 +282,15 @@ def main():
             print(f"Сгенерировано {len(original_list)} оригинальных и {len(variant_list)} искаженных записей")
             print(f"Оригинальные данные сохранены в {output_original}")
             print(f"Искаженные данные сохранены в {output_variant}")
+        
+        # Вывод 5 записей из каждого датасета
+        print("\nПримеры оригинальных записей:")
+        for i, record in enumerate(original_list[:5]):
+            print(f"{i+1}. {record}")
+            
+        print("\nПримеры искаженных записей:")
+        for i, record in enumerate(variant_list[:5]):
+            print(f"{i+1}. {record}")
         
         return
     
