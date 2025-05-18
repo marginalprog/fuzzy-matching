@@ -17,12 +17,12 @@ python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/inp
 
 3. Генерация тестовых данных на русском языке с русскими названиями полей:
 ```
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_ru.json --output-variant data/input/variant_ru.json --output-format json --record-count 100 --typo-probability 0.1 --character-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,Email" --language ru --field-names-format ru --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_ru.json --output-variant data/input/variant_ru.json --output-format json --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,Email" --language ru --field-names-format ru --verbose
 ```
 
 4. Генерация тестовых данных на английском языке с английскими названиями полей:
 ```
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_en.json --output-variant data/input/variant_en.json --output-format json --record-count 100 --typo-probability 0.1 --character-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,Email" --language en --field-names-format en --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_en.json --output-variant data/input/variant_en.json --output-format json --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,Email" --language en --field-names-format en --verbose
 ```
 
 Описание основных параметров:
@@ -37,8 +37,12 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
   --generate-fields: список полей для генерации в режиме generate
   --language: язык генерируемых данных (ru или en)
   --field-names-format: формат названий полей (ru или en)
-  --typo-probability: вероятность опечатки в поле (от 0 до 1)
-  --character-probability: вероятность искажения символов в поле (от 0 до 1)
+  --double-char-probability: вероятность дублирования буквы (от 0 до 1)
+  --change-char-probability: вероятность замены буквы (от 0 до 1)
+  --change-name-probability: вероятность полной замены ФИО (от 0 до 1)
+  --change-domain-probability: вероятность изменения домена в email (от 0 до 1)
+  --double-number-probability: вероятность дублирования цифры в телефоне (от 0 до 1)
+  --suffix-probability: вероятность добавления суффикса к ФИО (от 0 до 1)
 """
 
 import argparse
@@ -424,9 +428,9 @@ def main():
             print(f"{Colors.RED}Ошибка: для режима {args.mode} необходимо указать формат входного файла (--format1){Colors.ENDC}")
             sys.exit(1)
             
-        if not os.path.exists(args.input1):
+    if not os.path.exists(args.input1):
             print(f"{Colors.RED}Ошибка: файл {args.input1} не найден{Colors.ENDC}")
-            sys.exit(1)
+        sys.exit(1)
     
     if args.mode == 'match' and args.input2 and not os.path.exists(args.input2):
         print(f"{Colors.RED}Ошибка: файл {args.input2} не найден{Colors.ENDC}")

@@ -9,7 +9,7 @@ import sys
 
 # Классы для цветного вывода в терминале
 class Colors:
-    """Класс с ANSI-кодамицветов для терминала"""
+    """Класс с ANSI-кодами цветов для терминала"""
     HEADER = '\033[95m'
     BLUE = '\033[94m'
     CYAN = '\033[96m'
@@ -77,13 +77,13 @@ def main():
                 # Вызываем CLI для генерации тестовых данных
                 print(f"\n{Colors.BOLD}Запуск утилиты генерации тестовых данных...{Colors.ENDC}")
                 print(f"{Colors.YELLOW}Пример 1: Генерация данных на русском языке с русскими названиями полей:{Colors.ENDC}")
-                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --record-count 5 --typo-probability 0.05 --character-probability 0.02 --generate-fields \"id,Фамилия,Имя,Отчество,Email\" --output-original data/input/test_original_ru.json --output-variant data/input/test_variant_ru.json --language ru --field-names-format ru --verbose{Colors.ENDC}")
+                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --record-count 5 --double-char-probability 0.05 --change-char-probability 0.02 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields \"id,Фамилия,Имя,Отчество,Email\" --output-original data/input/test_original_ru.json --output-variant data/input/test_variant_ru.json --language ru --field-names-format ru --verbose{Colors.ENDC}")
                 
                 print(f"\n{Colors.YELLOW}Пример 2: Генерация данных на английском языке с английскими названиями полей:{Colors.ENDC}")
-                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --record-count 5 --typo-probability 0.05 --character-probability 0.02 --generate-fields \"id,LastName,FirstName,MiddleName,Email\" --output-original data/input/test_original_en.json --output-variant data/input/test_variant_en.json --language en --field-names-format en --verbose{Colors.ENDC}")
+                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --record-count 5 --double-char-probability 0.05 --change-char-probability 0.02 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields \"id,LastName,FirstName,MiddleName,Email\" --output-original data/input/test_original_en.json --output-variant data/input/test_variant_en.json --language en --field-names-format en --verbose{Colors.ENDC}")
                 
                 print(f"\n{Colors.YELLOW}Пример 3: Генерация данных на английском языке с русскими названиями полей:{Colors.ENDC}")
-                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --record-count 5 --typo-probability 0.05 --character-probability 0.02 --generate-fields \"id,Фамилия,Имя,Отчество,Email\" --output-original data/input/test_original_en_ru.json --output-variant data/input/test_variant_en_ru.json --language en --field-names-format ru --verbose{Colors.ENDC}")
+                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --record-count 5 --double-char-probability 0.05 --change-char-probability 0.02 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields \"id,Фамилия,Имя,Отчество,Email\" --output-original data/input/test_original_en_ru.json --output-variant data/input/test_variant_en_ru.json --language en --field-names-format ru --verbose{Colors.ENDC}")
                 
                 cmd = input(f"\n{Colors.YELLOW}Введите команду или нажмите Enter для возврата в меню: {Colors.ENDC}")
                 if cmd.strip():

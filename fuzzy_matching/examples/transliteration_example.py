@@ -5,26 +5,12 @@
 
 import json
 import pandas as pd
-from prettytable import PrettyTable
 
 import fuzzy_matching.utils.transliteration.transliteration_utils as translit
 from fuzzy_matching.core.data_matcher import DataMatcher
 from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig
-
-
-def print_table(data):
-    """Выводит данные в виде форматированной таблицы"""
-    if not data:
-        print("Нет данных для отображения")
-        return
-
-    table = PrettyTable()
-    table.field_names = data[0].keys()
-    for row in data:
-        table.add_row(row.values())
-
-    table.align = 'l'
-    print(table)
+from fuzzy_matching.examples.utils import print_table, print_matches, save_example_results
+from fuzzy_matching.examples.data_examples import PERSONAL_DATA_RU, PERSONAL_DATA_EN
 
 
 def case1_migrate_english_to_russian():
@@ -36,48 +22,7 @@ def case1_migrate_english_to_russian():
     print("\n=========== КЕЙС 1: МИГРАЦИЯ ДАННЫХ С АНГЛИЙСКОГО НА РУССКИЙ ===========\n")
     
     # Загружаем данные английской компании
-    english_data = [
-        {
-            'id': 'E001',
-            'last_name': 'Ivanov',
-            'first_name': 'Alexander',
-            'middle_name': 'Sergeevich',
-            'position': 'CEO',
-            'email': 'aivanov@example.com'
-        },
-        {
-            'id': 'E002',
-            'last_name': 'Petrov',
-            'first_name': 'Mikhail',
-            'middle_name': 'Ivanovich',
-            'position': 'CTO',
-            'email': 'mpetrov@example.com'
-        },
-        {
-            'id': 'E003',
-            'last_name': 'Kuznetsova',
-            'first_name': 'Elena',
-            'middle_name': 'Alexandrovna',
-            'position': 'CFO',
-            'email': 'ekuznetsova@example.com'
-        },
-        {
-            'id': 'E004',
-            'last_name': 'Smirnov',
-            'first_name': 'Dmitry',
-            'middle_name': 'Petrovich',
-            'position': 'CIO',
-            'email': 'dsmirnov@example.com'
-        },
-        {
-            'id': 'E005',
-            'last_name': 'Sokolov',
-            'first_name': 'Vladimir',
-            'middle_name': 'Nikolaevich',
-            'position': 'COO',
-            'email': 'vsokolov@example.com'
-        }
-    ]
+    english_data = PERSONAL_DATA_EN
     
     print("Исходные данные английской компании:")
     print_table(english_data)
@@ -96,10 +41,9 @@ def case1_migrate_english_to_russian():
     for employee in english_data:
         ru_employee = {
             'ID': employee['id'],
-            'Фамилия': translit.transliterate_en_to_ru(employee['last_name'], translit.PASSPORT_STANDARD),
-            'Имя': translit.transliterate_en_to_ru(employee['first_name'], translit.PASSPORT_STANDARD),
-            'Отчество': translit.transliterate_en_to_ru(employee['middle_name'], translit.PASSPORT_STANDARD),
-            'Должность': employee['position'],
+            'Фамилия': translit.transliterate_en_to_ru(employee['Фамилия'], translit.PASSPORT_STANDARD),
+            'Имя': translit.transliterate_en_to_ru(employee['Имя'], translit.PASSPORT_STANDARD),
+            'Отчество': translit.transliterate_en_to_ru(employee['Отчество'], translit.PASSPORT_STANDARD),
             'Email': employee['email']
         }
         russian_data.append(ru_employee)
@@ -108,10 +52,10 @@ def case1_migrate_english_to_russian():
     print_table(russian_data)
     
     # Сохраняем результат в JSON
-    with open('russian_employees.json', 'w', encoding='utf-8') as f:
+    with open('results/russian_employees.json', 'w', encoding='utf-8') as f:
         json.dump(russian_data, f, ensure_ascii=False, indent=4)
     
-    print("\nДанные сохранены в russian_employees.json")
+    print("\nДанные сохранены в results/russian_employees.json")
     print("\n==========================================================\n")
 
 
@@ -122,61 +66,9 @@ def case2_match_mixed_language_records():
     """
     print("\n=========== КЕЙС 2: СОПОСТАВЛЕНИЕ ЗАПИСЕЙ С РАЗНЫМИ ПРАВИЛАМИ ТРАНСЛИТЕРАЦИИ ===========\n")
     
-    # Создаем данные для сопоставления - разные варианты написания одних и тех же имен
-    russian_records = [
-        {
-            'id': 'R001',
-            'Фамилия': 'Иванов',
-            'Имя': 'Александр',
-            'Отчество': 'Сергеевич',
-            'Email': 'ivanov@company.ru'
-        },
-        {
-            'id': 'R002',
-            'Фамилия': 'Петров',
-            'Имя': 'Михаил',
-            'Отчество': 'Иванович',
-            'Email': 'petrov@company.ru'
-        },
-        {
-            'id': 'R003',
-            'Фамилия': 'Кузнецова',
-            'Имя': 'Елена',
-            'Отчество': 'Александровна',
-            'Email': 'kuznecova@company.ru'
-        }
-    ]
-    
-    english_records = [
-        {
-            'id': 'E001',
-            'Фамилия': 'Ivanov',
-            'Имя': 'Alexander',  # Английский вариант имени
-            'Отчество': 'Sergeevich',
-            'Email': 'aivanov@company.com'
-        },
-        {
-            'id': 'E002',
-            'Фамилия': 'Petrov',
-            'Имя': 'Michail',  # Научная транслитерация
-            'Отчество': 'Ivanovich',
-            'Email': 'mpetrov@company.com'
-        },
-        {
-            'id': 'E003',
-            'Фамилия': 'Kuznetsova',  # Разные правила транслитерации
-            'Имя': 'Elena',
-            'Отчество': 'Alexandrovna',
-            'Email': 'ekuznetsova@company.com'
-        },
-        {
-            'id': 'E004',
-            'Фамилия': 'Sidorov',  # Запись без соответствия
-            'Имя': 'Sergey',
-            'Отчество': 'Dmitrievich',
-            'Email': 'ssidorov@company.com'
-        }
-    ]
+    # Используем предопределенные данные
+    russian_records = PERSONAL_DATA_RU[:3]
+    english_records = PERSONAL_DATA_EN[:4]  # Добавляем одну запись без соответствия
     
     # Показываем исходные данные
     print("Записи на русском языке:")
@@ -211,21 +103,7 @@ def case2_match_mixed_language_records():
     
     # Показываем результаты сопоставления
     print("\nРезультаты сопоставления с учетом транслитерации:")
-    
-    table = PrettyTable()
-    table.field_names = ["Русская запись", "Английская запись", "Схожесть"]
-    
-    for match in matches:
-        ru = " ".join(match["Запись 1"])
-        en = " ".join(match["Запись 2"])
-        score = f"{match['Совпадение'][0]:.2f}"
-        table.add_row([ru, en, score])
-    
-    table.align["Русская запись"] = "l"
-    table.align["Английская запись"] = "l"
-    table.align["Схожесть"] = "r"
-    
-    print(table)
+    print_matches(matches)
     
     # Создаем DataFrame для удобного просмотра консолидированных данных
     df_consolidated = pd.DataFrame(consolidated)
@@ -239,6 +117,9 @@ def case2_match_mixed_language_records():
     else:
         print("Консолидированные записи отсутствуют")
     
+    # Сохраняем результаты
+    save_example_results(matches, consolidated, prefix="translit_mixed", results_dir="results")
+    
     print("\n==========================================================\n")
 
 
@@ -249,80 +130,69 @@ def case3_identify_correct_name_variant():
     """
     print("\n=========== КЕЙС 3: ВЫБОР ПРАВИЛЬНОГО ВАРИАНТА ИМЕНИ ===========\n")
     
-    # Варианты имен для анализа
-    examples = [
-        ("Александр", ["Alexander", "Aleksandr", "Alexandr"]),
-        ("Юлия", ["Julia", "Yulia", "Iuliia"]),
-        ("Щербаков", ["Shcherbakov", "Scherbakov", "Scherbakoff"]),
-        ("Евгений", ["Evgeny", "Yevgeny", "Eugene", "Eugenii"]),
-        ("Ксения", ["Ksenia", "Xenia", "Kseniya"])
+    # Создаем примеры разных вариантов написания одного и того же имени
+    name_variants = [
+        {"id": "1", "Имя": "Александр", "Язык": "Русский", "Примечание": "Оригинальное имя"},
+        {"id": "2", "Имя": "Alexander", "Язык": "Английский", "Примечание": "Стандартный английский эквивалент"},
+        {"id": "3", "Имя": "Aleksandr", "Язык": "Транслитерация", "Примечание": "Паспортная транслитерация"},
+        {"id": "4", "Имя": "Alexandr", "Язык": "Транслитерация", "Примечание": "Научная транслитерация"},
+        {"id": "5", "Имя": "Aleksander", "Язык": "Транслитерация", "Примечание": "Альтернативный вариант"},
+        {"id": "6", "Имя": "Sasha", "Язык": "Английский", "Примечание": "Уменьшительное имя"}
     ]
     
-    # Создаем конфигурацию для анализа транслитерации
-    transliteration_config = TransliterationConfig(
-        enabled=True,
-        standard="Паспортная",
-        normalize_names=True
-    )
+    print("Варианты написания имени:")
+    print_table(name_variants)
     
-    match_config = MatchConfig(
-        fields=[
-            MatchFieldConfig(field='name', weight=1.0, transliterate=True)
-        ],
-        transliteration=transliteration_config
-    )
+    print("\nСравнение вариантов с оригиналом (Александр):")
     
-    matcher = DataMatcher(config=match_config)
+    original = "Александр"
+    results = []
     
-    # Анализируем каждый пример
-    table = PrettyTable()
-    table.field_names = ["Русское имя", "Варианты на английском", "Наилучший вариант", "Схожесть"]
-    
-    for ru_name, en_variants in examples:
-        best_variant = matcher.select_best_transliteration_variant(en_variants, target_lang='ru')
+    for variant in name_variants[1:]:  # Пропускаем оригинал
+        # Прямое сравнение
+        direct_ratio = fuzz.ratio(original, variant["Имя"]) / 100.0
         
-        # Вычисляем схожесть лучшего варианта с оригиналом
-        ru_trans = translit.transliterate_en_to_ru(best_variant, translit.PASSPORT_STANDARD)
-        from rapidfuzz import fuzz
-        similarity = fuzz.token_sort_ratio(ru_name.lower(), ru_trans.lower()) / 100.0
+        # Сравнение с транслитерацией варианта на русский
+        if variant["Язык"] in ["Английский", "Транслитерация"]:
+            ru_variant = translit.transliterate_en_to_ru(variant["Имя"], translit.PASSPORT_STANDARD)
+            translit_ratio = fuzz.ratio(original, ru_variant) / 100.0
+        else:
+            ru_variant = variant["Имя"]
+            translit_ratio = direct_ratio
         
-        # Добавляем в таблицу
-        table.add_row([ru_name, ", ".join(en_variants), best_variant, f"{similarity:.2f}"])
-    
-    print("Выбор наилучшего варианта транслитерации для русских имен:")
-    print(table)
-    
-    # Обратное преобразование - с русского на английский
-    rev_examples = [
-        (["Aleksandr", "Alexander", "Alex"], "Александр"),
-        (["Yulia", "Julia", "Yuliya"], "Юлия"),
-        (["Sergei", "Sergey", "Serge"], "Сергей"),
-        (["Maria", "Mariya", "Mary"], "Мария")
-    ]
-    
-    table = PrettyTable()
-    table.field_names = ["Английские варианты", "Русское имя", "Наилучший вариант", "Схожесть"]
-    
-    for en_variants, ru_name in rev_examples:
-        best_variant = matcher.select_best_transliteration_variant(en_variants, target_lang='ru')
+        # Сравнение с транслитерацией оригинала на английский
+        en_original = translit.transliterate_ru_to_en(original, translit.PASSPORT_STANDARD)
+        reverse_translit_ratio = fuzz.ratio(en_original, variant["Имя"]) / 100.0
         
-        # Вычисляем схожесть лучшего варианта с русским оригиналом
-        ru_trans = translit.transliterate_en_to_ru(best_variant, translit.PASSPORT_STANDARD)
-        from rapidfuzz import fuzz
-        similarity = fuzz.token_sort_ratio(ru_name.lower(), ru_trans.lower()) / 100.0
-        
-        # Добавляем в таблицу
-        table.add_row([", ".join(en_variants), ru_name, best_variant, f"{similarity:.2f}"])
+        results.append({
+            "Вариант": variant["Имя"],
+            "Язык": variant["Язык"],
+            "Прямое сравнение": f"{direct_ratio:.2f}",
+            "Транслит. на русский": f"{translit_ratio:.2f}",
+            "Сравнение с англ. оригиналом": f"{reverse_translit_ratio:.2f}",
+            "Транслит. вариант": ru_variant if variant["Язык"] != "Русский" else en_original
+        })
     
-    print("\nВыбор наилучшего английского варианта для русских имен:")
-    print(table)
+    print_table(results)
+    
+    print("\nВывод: При сопоставлении имен с разными языками, транслитерация")
+    print("значительно повышает точность сопоставления. Наиболее точные результаты")
+    print("достигаются при транслитерации вариантов к языку оригинала.")
     
     print("\n==========================================================\n")
 
 
 def main():
-    """Основная функция для демонстрации кейсов использования транслитерации"""
-    print("\n===== ДЕМОНСТРАЦИЯ КЕЙСОВ ИСПОЛЬЗОВАНИЯ ТРАНСЛИТЕРАЦИИ =====\n")
+    """
+    Основная функция примера.
+    """
+    import os
+    from rapidfuzz import fuzz
+    
+    # Создаем директорию для результатов
+    os.makedirs("results", exist_ok=True)
+    
+    print("===== ПРИМЕРЫ ИСПОЛЬЗОВАНИЯ ТРАНСЛИТЕРАЦИИ =====\n")
     
     # Кейс 1: Миграция данных с английского на русский
     case1_migrate_english_to_russian()
@@ -332,8 +202,8 @@ def main():
     
     # Кейс 3: Выбор правильного варианта имени
     case3_identify_correct_name_variant()
-
-    print("\n===== ЗАВЕРШЕНИЕ ДЕМОНСТРАЦИИ =====\n")
+    
+    print("===== ЗАВЕРШЕНИЕ ПРИМЕРОВ ТРАНСЛИТЕРАЦИИ =====")
 
 
 if __name__ == "__main__":

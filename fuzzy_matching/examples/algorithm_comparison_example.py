@@ -3,118 +3,19 @@
 Демонстрирует разницу в работе алгоритмов на конкретных примерах.
 """
 
-from prettytable import PrettyTable
 from rapidfuzz import fuzz
 
 from fuzzy_matching.core.data_matcher import DataMatcher
-from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig, FuzzyAlgorithm
-from fuzzy_matching.utils.data_generator import DataGenerator, Language
+from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, FuzzyAlgorithm
+from fuzzy_matching.examples.utils import print_table, print_matches, save_example_results
+from fuzzy_matching.examples.data_examples import (
+    ALGORITHM_EXAMPLES, ALGORITHM_VARIANTS, STRING_COMPARISON_EXAMPLES
+)
 
 
-def print_table(data):
-    """Выводит данные в виде форматированной таблицы"""
-    if not data:
-        print("Нет данных для отображения")
-        return
-
-    table = PrettyTable()
-    table.field_names = data[0].keys()
-    for row in data:
-        table.add_row(row.values())
-
-    table.align = 'l'
-    print(table)
-
-
-def generate_test_data():
-    """Генерирует тестовые данные для демонстрации работы алгоритмов."""
-    # Специальные примеры для демонстрации разницы в алгоритмах
-    special_cases = [
-        {
-            'id': 's1',
-            'Фамилия': 'Иванов',
-            'Имя': 'Иван',
-            'Отчество': 'Иванович',
-            'email': 'ivanov@example.com'
-        },
-        {
-            'id': 's2',
-            'Фамилия': 'Чехов-Петров',
-            'Имя': 'Антон',
-            'Отчество': 'Павлович',
-            'email': 'chekhov@example.com'
-        },
-        {
-            'id': 's3',
-            'Фамилия': 'Сидоров',
-            'Имя': 'Петр',
-            'Отчество': 'Сидорович',
-            'email': 'sidorov@example.com'
-        },
-        {
-            'id': 's4',
-            'Фамилия': 'Smith',
-            'Имя': 'John',
-            'Отчество': 'Robert',
-            'email': 'jsmith@example.com'
-        },
-        {
-            'id': 's5',
-            'Фамилия': 'Johnson',
-            'Имя': 'James',
-            'Отчество': 'William',
-            'email': 'jjohnson@example.com'
-        }
-    ]
-    
-    # Варианты с различными типами ошибок для демонстрации разных алгоритмов
-    variant_cases = [
-        {
-            'id': 'v1',
-            'Фамилия': 'Иванов',
-            'Имя': 'Иван',
-            'Отчество': 'Ивановч',  # Пропущена буква (опечатка)
-            'email': 'ivanov@example.com'
-        },
-        {
-            'id': 'v2',
-            'Фамилия': 'Петров-Чехов',  # Порядок слов изменен
-            'Имя': 'Антон',
-            'Отчество': 'Павлович',
-            'email': 'chekhov@example.com'
-        },
-        {
-            'id': 'v3',
-            'Фамилия': 'Сидоров',
-            'Имя': 'Сидорович',  # Имя и отчество перепутаны местами
-            'Отчество': 'Петр',  # Алгоритм token_set должен лучше справляться
-            'email': 'sidorov@example.com'
-        },
-        {
-            'id': 'v4',
-            'Фамилия': 'Smith',
-            'Имя': 'Johnny',  # Уменьшительное имя
-            'Отчество': 'Rob',  # Сокращение
-            'email': 'johnsmith@example.com'  # Изменен email
-        },
-        {
-            'id': 'v5',
-            'Фамилия': 'Johnson',
-            'Имя': 'Jim',      # Сокращенная форма имени
-            'Отчество': 'Bill', # Сокращенная форма отчества
-            'email': 'jim.johnson@example.com'  # Изменен формат email
-        }
-    ]
-    
-    return special_cases, variant_cases
-
-
-def compare_algorithms(data1, data2):
+def compare_algorithms_on_strings():
     """
-    Сравнивает работу различных алгоритмов нечеткого сопоставления.
-    
-    :param data1: первый набор данных
-    :param data2: второй набор данных
+    Сравнивает работу различных алгоритмов нечеткого сопоставления на строках.
     """
     algorithms = [
         FuzzyAlgorithm.RATIO,
@@ -124,18 +25,9 @@ def compare_algorithms(data1, data2):
         FuzzyAlgorithm.WRatio
     ]
     
-    # Для наглядности работы алгоритмов сравниваем две строки
     print("\n=== СРАВНЕНИЕ РАБОТЫ АЛГОРИТМОВ НА СТРОКАХ ===")
-    string_examples = [
-        ("Иванов Иван", "Иванов Иван"),              # Точное совпадение
-        ("Иванов Иван", "Иванов Иван Иванович"),     # Частичное совпадение
-        ("Петров-Чехов", "Чехов-Петров"),            # Перестановка токенов
-        ("Иван Сидорович", "Сидорович Иван"),        # Перестановка слов
-        ("John Smith", "Johnny Smith"),              # Уменьшительное имя
-        ("The quick brown fox", "The brown fox was quick")  # Перемешанные слова
-    ]
     
-    for s1, s2 in string_examples:
+    for s1, s2 in STRING_COMPARISON_EXAMPLES:
         print(f"\nПример: '{s1}' и '{s2}'")
         results = []
         for algo in algorithms:
@@ -159,8 +51,24 @@ def compare_algorithms(data1, data2):
         
         # Выводим результаты
         print_table(results)
+
+
+def compare_algorithms_on_records():
+    """
+    Сравнивает работу различных алгоритмов нечеткого сопоставления на записях.
+    """
+    algorithms = [
+        FuzzyAlgorithm.RATIO,
+        FuzzyAlgorithm.PARTIAL_RATIO,
+        FuzzyAlgorithm.TOKEN_SORT,
+        FuzzyAlgorithm.TOKEN_SET,
+        FuzzyAlgorithm.WRatio
+    ]
     
-    # Теперь применяем разные алгоритмы к нашим данным
+    # Получаем тестовые данные
+    data1 = ALGORITHM_EXAMPLES
+    data2 = ALGORITHM_VARIANTS
+    
     print("\n=== СРАВНЕНИЕ РАБОТЫ АЛГОРИТМОВ НА ЗАПИСЯХ ===")
     
     # Базовая конфигурация
@@ -213,6 +121,11 @@ def compare_algorithms(data1, data2):
     
     print("\n=== СРАВНИТЕЛЬНАЯ ТАБЛИЦА РАБОТЫ АЛГОРИТМОВ ===")
     print_table(comparison)
+    
+    # Сохраняем результаты
+    for algo_name, matches in all_matches.items():
+        if matches:
+            save_example_results(matches, [], prefix=f"algo_{algo_name.lower()}", results_dir="results")
 
 
 def main():
@@ -221,8 +134,9 @@ def main():
     """
     print("\n===== СРАВНЕНИЕ АЛГОРИТМОВ НЕЧЕТКОГО СОПОСТАВЛЕНИЯ =====\n")
     
-    # Генерируем тестовые данные
-    data1, data2 = generate_test_data()
+    # Получаем тестовые данные
+    data1 = ALGORITHM_EXAMPLES
+    data2 = ALGORITHM_VARIANTS
     
     print("Исходные данные:")
     print("\nПервый набор данных:")
@@ -230,8 +144,11 @@ def main():
     print("\nВторой набор данных:")
     print_table(data2)
     
-    # Сравниваем алгоритмы
-    compare_algorithms(data1, data2)
+    # Сравниваем алгоритмы на строках
+    compare_algorithms_on_strings()
+    
+    # Сравниваем алгоритмы на записях
+    compare_algorithms_on_records()
     
     print("\n===== ЗАВЕРШЕНИЕ СРАВНЕНИЯ АЛГОРИТМОВ =====\n")
 

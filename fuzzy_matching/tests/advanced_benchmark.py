@@ -495,7 +495,7 @@ def plot_detailed_results(results, output_dir=None):
         plt.title(f"Время выполнения для {size} записей")
         plt.ylabel("Время (сек)")
         plt.xticks(range(len(algorithms)), [a.replace('Алгоритм ', '') for a in algorithms], rotation=45)
-    
+        
     # Размещаем легенду внизу графика
     plt.figlegend(loc='lower center', bbox_to_anchor=(0.5, 0.0), ncol=6)
     
@@ -528,7 +528,7 @@ def plot_detailed_results(results, output_dir=None):
         plt.title(f"Количество совпадений для {size} записей")
         plt.ylabel("Количество совпадений")
         plt.xticks(range(len(algorithms)), [a.replace('Алгоритм ', '') for a in algorithms], rotation=45)
-    
+        
     # Размещаем легенду внизу графика
     plt.figlegend(loc='lower center', bbox_to_anchor=(0.5, 0.0), ncol=6)
     
@@ -561,7 +561,7 @@ def plot_detailed_results(results, output_dir=None):
         plt.title(f"Эффективность алгоритмов для {size} записей")
         plt.ylabel("Совпадений в секунду")
         plt.xticks(range(len(algorithms)), [a.replace('Алгоритм ', '') for a in algorithms], rotation=45)
-    
+        
     # Размещаем легенду внизу графика
     plt.figlegend(loc='lower center', bbox_to_anchor=(0.5, 0.0), ncol=6)
     
