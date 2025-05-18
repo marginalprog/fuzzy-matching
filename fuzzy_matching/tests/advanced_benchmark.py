@@ -16,7 +16,7 @@ import numpy as np
 
 from fuzzy_matching.utils.data_generator import DataGenerator, Language
 from fuzzy_matching.core.data_matcher import DataMatcher
-from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig, FuzzyAlgorithm, DomainSpecificAlgorithm
+from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig, FuzzyAlgorithm
 import fuzzy_matching.utils.transliteration_utils as translit
 
 
@@ -182,27 +182,47 @@ def create_test_configs():
         })
         configs.append(algo_config_without_translit)
     
-    # Добавляем конфигурации с предметно-ориентированными алгоритмами
-    person_data_config = full_translit_config.copy()
-    person_data_config.update({
-        'name': 'Предметно-ориентированный (ФИО)',
-        'domain_algorithm': DomainSpecificAlgorithm.PERSON_DATA
+    # Добавляем конфигурации для специализированных персональных данных
+    person_name_config = full_translit_config.copy()
+    person_name_config.update({
+        'name': 'Персональные ФИО (оптимизированная)',
+        'fuzzy_algorithm': FuzzyAlgorithm.PARTIAL_RATIO,
+        'fields_algorithms': {
+            'Фамилия': FuzzyAlgorithm.TOKEN_SORT,
+            'Имя': FuzzyAlgorithm.PARTIAL_RATIO,
+            'Отчество': FuzzyAlgorithm.RATIO,
+            'email': FuzzyAlgorithm.RATIO
+        }
     })
-    configs.append(person_data_config)
+    configs.append(person_name_config)
     
-    product_data_config = full_translit_config.copy()
-    product_data_config.update({
-        'name': 'Предметно-ориентированный (Товары)',
-        'domain_algorithm': DomainSpecificAlgorithm.PRODUCT_DATA
+    # Конфигурация для товаров
+    product_config = full_translit_config.copy()
+    product_config.update({
+        'name': 'Товары (оптимизированная)',
+        'fuzzy_algorithm': FuzzyAlgorithm.TOKEN_SET,
+        'fields_algorithms': {
+            'Фамилия': FuzzyAlgorithm.TOKEN_SET,
+            'Имя': FuzzyAlgorithm.TOKEN_SET,
+            'Отчество': FuzzyAlgorithm.TOKEN_SET,
+            'email': FuzzyAlgorithm.RATIO
+        }
     })
-    configs.append(product_data_config)
+    configs.append(product_config)
     
-    company_data_config = full_translit_config.copy()
-    company_data_config.update({
-        'name': 'Предметно-ориентированный (Компании)',
-        'domain_algorithm': DomainSpecificAlgorithm.COMPANY_DATA
+    # Конфигурация для компаний
+    company_config = full_translit_config.copy()
+    company_config.update({
+        'name': 'Компании (оптимизированная)',
+        'fuzzy_algorithm': FuzzyAlgorithm.TOKEN_SET,
+        'fields_algorithms': {
+            'Фамилия': FuzzyAlgorithm.TOKEN_SET,
+            'Имя': FuzzyAlgorithm.TOKEN_SORT,
+            'Отчество': FuzzyAlgorithm.RATIO,
+            'email': FuzzyAlgorithm.RATIO
+        }
     })
-    configs.append(company_data_config)
+    configs.append(company_config)
     
     return configs
 
@@ -229,11 +249,17 @@ def build_match_config(config_dict):
     fields = []
     
     for i, field in enumerate(field_names):
-        fields.append(MatchFieldConfig(
+        field_config = MatchFieldConfig(
             field=field,
             weight=field_weights[i],
             transliterate=config_dict['fields_transliterate'][i]
-        ))
+        )
+        
+        # Если есть алгоритмы для конкретных полей, устанавливаем их
+        if 'fields_algorithms' in config_dict and field in config_dict['fields_algorithms']:
+            field_config.fuzzy_algorithm = config_dict['fields_algorithms'][field]
+            
+        fields.append(field_config)
     
     # Создаем основную конфигурацию
     match_config = MatchConfig(
@@ -555,9 +581,9 @@ def plot_detailed_results(results, output_dir="results"):
     
     # Группируем по предметным областям
     domain_algs = [
-        'Предметно-ориентированный (ФИО)',
-        'Предметно-ориентированный (Товары)',
-        'Предметно-ориентированный (Компании)'
+        'Персональные ФИО (оптимизированная)',
+        'Товары (оптимизированная)',
+        'Компании (оптимизированная)'
     ]
     
     metrics = ['duration', 'matches_count']
@@ -581,7 +607,7 @@ def plot_detailed_results(results, output_dir="results"):
             plt.bar(x_pos, values, width=0.25, alpha=0.7)
         
         plt.title(f"Сравнение предметно-ориентированных алгоритмов: {metric_titles[k]}")
-        plt.xticks(range(len(domain_algs)), [a.replace('Предметно-ориентированный ', '') for a in domain_algs], rotation=45)
+        plt.xticks(range(len(domain_algs)), [a.replace('Персональные ФИО (оптимизированная)', 'Персональные ФИО') for a in domain_algs], rotation=45)
     
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "domain_algorithms_comparison.png"))
@@ -679,7 +705,7 @@ def main():
     
     for result in results[1000]:
         if result['config_name'] in ['Базовая без транслитерации', 'Полная транслитерация', 
-                                     'Алгоритм WRatio с транслитерацией', 'Предметно-ориентированный (ФИО)']:
+                                     'Алгоритм WRatio с транслитерацией', 'Персональные ФИО (оптимизированная)']:
             print(f"\nКонфигурация: {result['config_name']}")
             print(result['profile_stats'])
     

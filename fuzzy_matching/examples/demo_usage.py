@@ -6,7 +6,7 @@
 1. Генерация тестовых данных
 2. Базовое сопоставление данных
 3. Сопоставление с транслитерацией
-4. Использование предметно-ориентированных алгоритмов
+4. Специализированные алгоритмы для разных типов данных
 5. Загрузка и сохранение данных из/в CSV/JSON
 
 Запуск:
@@ -21,7 +21,7 @@ from prettytable import PrettyTable
 from fuzzy_matching.core.data_matcher import DataMatcher
 from fuzzy_matching.core.match_config_classes import (
     MatchConfig, MatchFieldConfig, TransliterationConfig,
-    FuzzyAlgorithm, DomainSpecificAlgorithm
+    FuzzyAlgorithm
 )
 from fuzzy_matching.utils.data_generator import DataGenerator, Language
 
@@ -278,9 +278,9 @@ def demo_transliteration():
 
 def demo_domain_specific():
     """
-    Демонстрирует использование предметно-ориентированных алгоритмов.
+    Демонстрирует использование специализированных алгоритмов для различных типов данных.
     """
-    print("\n===== ПРЕДМЕТНО-ОРИЕНТИРОВАННЫЕ АЛГОРИТМЫ =====\n")
+    print("\n===== СПЕЦИАЛИЗИРОВАННЫЕ АЛГОРИТМЫ ДЛЯ РАЗНЫХ ТИПОВ ДАННЫХ =====\n")
     
     # Данные о людях
     person_data1 = [
@@ -317,15 +317,17 @@ def demo_domain_specific():
     
     # Демонстрация для персональных данных
     print("1. Сопоставление персональных данных:")
+    person_fields = [
+        MatchFieldConfig(field='Фамилия', weight=0.4, fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SORT),
+        MatchFieldConfig(field='Имя', weight=0.3, fuzzy_algorithm=FuzzyAlgorithm.PARTIAL_RATIO),
+        MatchFieldConfig(field='Отчество', weight=0.2, fuzzy_algorithm=FuzzyAlgorithm.RATIO),
+        MatchFieldConfig(field='email', weight=0.1, fuzzy_algorithm=FuzzyAlgorithm.RATIO)
+    ]
+    
     person_config = MatchConfig(
-        fields=[
-            MatchFieldConfig(field='Фамилия', weight=0.4),
-            MatchFieldConfig(field='Имя', weight=0.3),
-            MatchFieldConfig(field='Отчество', weight=0.2),
-            MatchFieldConfig(field='email', weight=0.1)
-        ],
+        fields=person_fields,
         threshold=0.7,
-        domain_algorithm=DomainSpecificAlgorithm.PERSON_DATA
+        fuzzy_algorithm=FuzzyAlgorithm.PARTIAL_RATIO  # Базовый алгоритм, если для поля не указан
     )
     
     person_matcher = DataMatcher(config=person_config)
@@ -334,13 +336,15 @@ def demo_domain_specific():
     
     # Демонстрация для товаров
     print("\n2. Сопоставление данных о товарах:")
+    product_fields = [
+        MatchFieldConfig(field='Название', weight=0.8, fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SET),
+        MatchFieldConfig(field='Категория', weight=0.2, fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SET)
+    ]
+    
     product_config = MatchConfig(
-        fields=[
-            MatchFieldConfig(field='Название', weight=0.8),
-            MatchFieldConfig(field='Категория', weight=0.2)
-        ],
+        fields=product_fields,
         threshold=0.7,
-        domain_algorithm=DomainSpecificAlgorithm.PRODUCT_DATA
+        fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SET
     )
     
     product_matcher = DataMatcher(config=product_config)
@@ -349,19 +353,26 @@ def demo_domain_specific():
     
     # Демонстрация для компаний
     print("\n3. Сопоставление данных о компаниях:")
+    company_fields = [
+        MatchFieldConfig(field='Название', weight=0.6, fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SET),
+        MatchFieldConfig(field='Адрес', weight=0.2, fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SORT),
+        MatchFieldConfig(field='ИНН', weight=0.2, fuzzy_algorithm=FuzzyAlgorithm.RATIO)
+    ]
+    
     company_config = MatchConfig(
-        fields=[
-            MatchFieldConfig(field='Название', weight=0.6),
-            MatchFieldConfig(field='Адрес', weight=0.2),
-            MatchFieldConfig(field='ИНН', weight=0.2)
-        ],
+        fields=company_fields,
         threshold=0.7,
-        domain_algorithm=DomainSpecificAlgorithm.COMPANY_DATA
+        fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SET
     )
     
     company_matcher = DataMatcher(config=company_config)
     company_matches, _ = company_matcher.match_and_consolidate(company_data1, company_data2)
     print_matches(company_matches)
+    
+    print("\nСравнение подходов:")
+    print("- Для персональных данных: TOKEN_SORT для фамилий, PARTIAL_RATIO для имен")
+    print("- Для товаров: TOKEN_SET для всех полей (учитывает перемешанные слова)")
+    print("- Для компаний: TOKEN_SET для названий, TOKEN_SORT для адресов")
 
 
 def demo_file_operations():
@@ -473,7 +484,7 @@ def main():
     # Сопоставление с транслитерацией
     demo_transliteration()
     
-    # Предметно-ориентированные алгоритмы
+    # Специализированные алгоритмы для различных типов данных
     demo_domain_specific()
     
     # Операции с файлами
