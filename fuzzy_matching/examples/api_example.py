@@ -23,9 +23,9 @@ os.makedirs(results_dir, exist_ok=True)
 # Пример 1: Генерация тестовых данных
 print("\n=== Пример 1: Генерация тестовых данных ===")
 original_data, variant_data = generate_test_datasets(
-    count=10,
+    count=100,
     typo_probability=0.2,
-    field_swap_probability=0.1,
+    character_probability=0.1,
     save_to_file=True,
     output_original=os.path.join(results_dir, 'api_original.json'),
     output_variant=os.path.join(results_dir, 'api_variant.json')

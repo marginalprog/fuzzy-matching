@@ -77,7 +77,7 @@ def main():
     --output-variant variant.json \\
     --record-count 100 \\
     --typo-probability 0.1 \\
-    --field-swap-probability 0.05 \\
+    --character-probability 0.05 \\
     --verbose""")
                 cmd = input("\nВведите команду или нажмите Enter для возврата в меню: ")
                 if cmd.strip():

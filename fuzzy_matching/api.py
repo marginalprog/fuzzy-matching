@@ -266,7 +266,7 @@ def transliterate_dataset(
 def generate_test_datasets(
     count: int = 100, 
     typo_probability: float = 0.1,
-    field_swap_probability: float = 0.05,
+    character_probability: float = 0.05,
     save_to_file: bool = False,
     output_original: Optional[str] = None,
     output_variant: Optional[str] = None,
@@ -277,7 +277,7 @@ def generate_test_datasets(
     
     :param count: количество записей для генерации
     :param typo_probability: вероятность опечатки в поле (от 0 до 1)
-    :param field_swap_probability: вероятность перестановки порядка слов в поле (от 0 до 1)
+    :param character_probability: вероятность искажения символов в поле (от 0 до 1)
     :param save_to_file: сохранять ли результаты в файлы
     :param output_original: путь для сохранения оригинальных данных
     :param output_variant: путь для сохранения искаженных данных
@@ -287,7 +287,7 @@ def generate_test_datasets(
     # Определяем вероятности искажений
     probabilities = {
         'typo': typo_probability,
-        'swap': field_swap_probability,
+        'swap': character_probability,
         'case': 0.2,  # Вероятность изменения регистра
         'extra_space': 0.1  # Вероятность добавления лишних пробелов
     }

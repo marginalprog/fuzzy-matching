@@ -32,7 +32,7 @@
        --output-format json \
        --record-count 100 \
        --typo-probability 0.1 \
-       --field-swap-probability 0.05 \
+       --character-probability 0.05 \
        --verbose
 
 Описание основных параметров:
@@ -172,8 +172,8 @@ def main():
                       help="Количество записей для генерации (по умолчанию 100)")
     parser.add_argument('--typo-probability', type=float, default=0.1,
                       help="Вероятность опечатки в поле (от 0 до 1, по умолчанию 0.1)")
-    parser.add_argument('--field-swap-probability', type=float, default=0.05,
-                      help="Вероятность перестановки порядка слов в поле (от 0 до 1, по умолчанию 0.05)")
+    parser.add_argument('--character-probability', type=float, default=0.05,
+                      help="Вероятность искажения символов в поле (от 0 до 1, по умолчанию 0.05)")
     
     # Параметры конфигурации
     parser.add_argument('--threshold', type=float, default=0.7,
@@ -231,7 +231,7 @@ def main():
         # Определяем вероятности искажений
         probabilities = {
             'typo': args.typo_probability,
-            'swap': args.field_swap_probability,
+            'swap': args.character_probability,
             'case': 0.2,  # Вероятность изменения регистра
             'extra_space': 0.1  # Вероятность добавления лишних пробелов
         }
