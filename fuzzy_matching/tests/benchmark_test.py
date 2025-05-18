@@ -91,7 +91,7 @@ def run_benchmark(ru_data, en_data, with_transliteration=False, fuzzy_algorithm=
     # Настройка транслитерации
     transliteration_config = TransliterationConfig(
         enabled=with_transliteration,
-        standard="Паспортная транслитерация",
+        standard="Паспортная",
         threshold=0.7,
         auto_detect=True,
         normalize_names=True

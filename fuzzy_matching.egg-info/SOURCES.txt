@@ -7,10 +7,16 @@ fuzzy_matching.egg-info/SOURCES.txt
 fuzzy_matching.egg-info/dependency_links.txt
 fuzzy_matching.egg-info/requires.txt
 fuzzy_matching.egg-info/top_level.txt
+fuzzy_matching/cli/__init__.py
+fuzzy_matching/cli/main.py
+fuzzy_matching/cli/process_data.py
 fuzzy_matching/core/__init__.py
 fuzzy_matching/core/data_matcher.py
 fuzzy_matching/core/match_config_classes.py
 fuzzy_matching/examples/__init__.py
+fuzzy_matching/examples/algorithm_comparison_example.py
+fuzzy_matching/examples/demo_usage.py
+fuzzy_matching/examples/domain_specific_example.py
 fuzzy_matching/examples/simple_example.py
 fuzzy_matching/examples/transliteration_example.py
 fuzzy_matching/tests/__init__.py
@@ -18,4 +24,5 @@ fuzzy_matching/tests/advanced_benchmark.py
 fuzzy_matching/tests/benchmark_test.py
 fuzzy_matching/utils/__init__.py
 fuzzy_matching/utils/data_generator.py
-fuzzy_matching/utils/transliteration_utils.py
+fuzzy_matching/utils/transliteration/__init__.py
+fuzzy_matching/utils/transliteration/transliteration_utils.py

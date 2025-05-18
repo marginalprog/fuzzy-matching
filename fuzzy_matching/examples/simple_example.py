@@ -152,7 +152,7 @@ def demo_transliteration_matching():
     # Настройка конфигурации с транслитерацией
     transliteration_config = TransliterationConfig(
         enabled=True,
-        standard="Паспортная транслитерация",
+        standard="Паспортная",
         threshold=0.7,
         auto_detect=True,
         normalize_names=True

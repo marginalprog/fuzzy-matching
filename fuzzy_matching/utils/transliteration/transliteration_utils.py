@@ -72,19 +72,19 @@ PASSPORT_EN_TO_RU_MAP = {
 
 # Создаем экземпляры стандартов
 GOST_STANDARD = TransliterationStandard(
-    "ГОСТ 7.79-2000", 
+    "ГОСТ", # 7.79-2000
     "Российский стандарт транслитерации, соответствующий ISO 9:1995",
     GOST_779_MAP
 )
 
 SCIENTIFIC_STANDARD = TransliterationStandard(
-    "Научная транслитерация", 
+    "Научная", 
     "Используется в лингвистике и научных работах",
     SCIENTIFIC_MAP
 )
 
 PASSPORT_STANDARD = TransliterationStandard(
-    "Паспортная транслитерация", 
+    "Паспортная", 
     "Упрощенная транслитерация, используемая в загранпаспортах РФ",
     PASSPORT_MAP,
     PASSPORT_EN_TO_RU_MAP
@@ -204,108 +204,143 @@ def detect_language(text):
 
 def is_valid_transliteration(ru_text, en_text, standard=PASSPORT_STANDARD, threshold=0.8):
     """
-    Проверяет, является ли английский текст транслитерацией русского.
+    Проверяет, является ли en_text валидной транслитерацией ru_text.
     
-    :param ru_text: текст на русском языке
-    :param en_text: потенциальная транслитерация на английском
-    :param standard: стандарт транслитерации
-    :param threshold: порог схожести (0-1)
-    :return: True если en_text является транслитерацией ru_text, иначе False
+    :param ru_text: исходный текст на русском
+    :param en_text: транслитерированный текст на английском
+    :param standard: стандарт транслитерации (объект TransliterationStandard)
+    :param threshold: порог схожести (от 0 до 1)
+    :return: True, если транслитерация валидна, иначе False
     """
-    # Транслитерируем русский текст
-    expected_en = transliterate_ru_to_en(ru_text, standard)
+    if not ru_text or not en_text:
+        return False
     
-    # Нормализуем строки для сравнения
-    expected_en = expected_en.lower().replace(' ', '')
-    actual_en = en_text.lower().replace(' ', '')
+    # Определяем языки текстов
+    ru_lang = detect_language(ru_text)
+    en_lang = detect_language(en_text)
     
-    # Вычисляем схожесть
-    from rapidfuzz import fuzz
-    similarity = fuzz.ratio(expected_en, actual_en) / 100.0
+    if ru_lang != 'ru' or en_lang != 'en':
+        return False
     
+    # Транслитерируем русский текст и сравниваем с английским
+    transliterated = transliterate_ru_to_en(ru_text, standard)
+    
+    # Нормализуем для сравнения
+    transliterated = transliterated.lower().replace(' ', '')
+    en_normalized = en_text.lower().replace(' ', '')
+    
+    # Вычисляем схожесть как отношение совпадающих символов
+    match_count = sum(1 for a, b in zip(transliterated, en_normalized) if a == b)
+    max_length = max(len(transliterated), len(en_normalized))
+    
+    if max_length == 0:
+        return False
+    
+    similarity = match_count / max_length
     return similarity >= threshold
 
 
 def normalize_name_ru(name):
     """
-    Нормализует русское имя, удаляя лишние символы и приводя к нижнему регистру.
+    Нормализует русское имя: приводит к нижнему регистру, удаляет лишние пробелы,
+    заменяет 'ё' на 'е' и т.д.
     
-    :param name: исходное имя
+    :param name: имя для нормализации
     :return: нормализованное имя
     """
-    # Удаляем все, кроме русских букв и пробелов
-    name = re.sub(r'[^а-яА-ЯёЁ\s]', '', name)
-    # Приводим к нижнему регистру
-    name = name.lower()
-    # Заменяем ё на е (распространенный вариант)
-    name = name.replace('ё', 'е')
-    # Удаляем лишние пробелы
-    name = re.sub(r'\s+', ' ', name).strip()
-    return name
+    if not name:
+        return ""
+    
+    # Приводим к нижнему регистру и удаляем лишние пробелы
+    normalized = name.lower().strip()
+    normalized = re.sub(r'\s+', ' ', normalized)
+    
+    # Заменяем 'ё' на 'е'
+    normalized = normalized.replace('ё', 'е')
+    
+    return normalized
 
 
 def normalize_name_en(name):
     """
-    Нормализует английское имя, удаляя лишние символы и приводя к нижнему регистру.
+    Нормализует английское имя: приводит к нижнему регистру, удаляет лишние пробелы и т.д.
     
-    :param name: исходное имя
+    :param name: имя для нормализации
     :return: нормализованное имя
     """
-    # Удаляем все, кроме латинских букв и пробелов
-    name = re.sub(r'[^a-zA-Z\s]', '', name)
-    # Приводим к нижнему регистру
-    name = name.lower()
-    # Удаляем лишние пробелы
-    name = re.sub(r'\s+', ' ', name).strip()
-    return name
+    if not name:
+        return ""
+    
+    # Приводим к нижнему регистру и удаляем лишние пробелы
+    normalized = name.lower().strip()
+    normalized = re.sub(r'\s+', ' ', normalized)
+    
+    return normalized
 
 
 def get_all_possible_transliterations(text, from_lang='ru'):
     """
-    Возвращает все возможные варианты транслитерации текста.
+    Возвращает все возможные варианты транслитерации текста по всем доступным стандартам.
     
     :param text: исходный текст
-    :param from_lang: исходный язык ('ru' или 'en')
-    :return: список возможных транслитераций
+    :param from_lang: язык исходного текста ('ru' или 'en')
+    :return: словарь {название_стандарта: транслитерированный_текст}
     """
-    result = []
+    result = {}
     
-    if from_lang == 'ru':
-        for standard in STANDARDS:
-            trans = transliterate_ru_to_en(text, standard)
-            if trans and trans not in result:
-                result.append(trans)
-    else:  # from_lang == 'en'
-        for standard in STANDARDS:
-            trans = transliterate_en_to_ru(text, standard)
-            if trans and trans not in result:
-                result.append(trans)
-                
+    for standard in STANDARDS:
+        if from_lang == 'ru':
+            result[standard.name] = transliterate_ru_to_en(text, standard)
+        else:
+            result[standard.name] = transliterate_en_to_ru(text, standard)
+    
     return result
 
 
 def get_best_transliteration_match(source_text, target_texts, from_lang='ru'):
     """
-    Находит наилучшее соответствие среди возможных транслитераций.
+    Находит наиболее вероятный вариант транслитерации из списка возможных.
     
     :param source_text: исходный текст
-    :param target_texts: список текстов для сравнения
-    :param from_lang: исходный язык ('ru' или 'en')
-    :return: кортеж (лучший вариант, коэффициент схожести)
+    :param target_texts: список возможных транслитераций
+    :param from_lang: язык исходного текста ('ru' или 'en')
+    :return: кортеж (лучший_вариант, оценка_схожести)
     """
-    from rapidfuzz import fuzz
-    
-    # Получаем все возможные транслитерации
-    transliterations = get_all_possible_transliterations(source_text, from_lang)
+    if not source_text or not target_texts:
+        return None, 0.0
     
     best_match = None
-    best_score = 0
+    best_score = 0.0
     
+    # Получаем все возможные транслитерации исходного текста
+    all_transliterations = {}
+    for standard in STANDARDS:
+        if from_lang == 'ru':
+            trans_text = transliterate_ru_to_en(source_text, standard)
+        else:
+            trans_text = transliterate_en_to_ru(source_text, standard)
+        
+        all_transliterations[standard.name] = trans_text.lower()
+    
+    # Для каждого текста из target_texts находим наилучшее соответствие
     for target in target_texts:
-        for trans in transliterations:
-            score = fuzz.token_sort_ratio(trans.lower(), target.lower()) / 100.0
-            if score > best_score:
-                best_score = score
-                best_match = target
+        if not target:
+            continue
+            
+        target_lower = target.lower()
+        
+        for standard_name, trans_text in all_transliterations.items():
+            # Вычисляем схожесть как отношение совпадающих символов
+            match_count = sum(1 for a, b in zip(trans_text, target_lower) if a == b)
+            max_length = max(len(trans_text), len(target_lower))
+            
+            if max_length == 0:
+                continue
                 
+            similarity = match_count / max_length
+            
+            if similarity > best_score:
+                best_score = similarity
+                best_match = target
+    
     return best_match, best_score 

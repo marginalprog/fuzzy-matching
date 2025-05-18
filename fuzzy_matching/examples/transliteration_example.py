@@ -188,7 +188,7 @@ def case2_match_mixed_language_records():
     # Создаем конфигурацию для сопоставления с транслитерацией
     transliteration_config = TransliterationConfig(
         enabled=True,
-        standard="Паспортная транслитерация",
+        standard="Паспортная",
         threshold=0.7,
         auto_detect=True,
         normalize_names=True
@@ -261,7 +261,7 @@ def case3_identify_correct_name_variant():
     # Создаем конфигурацию для анализа транслитерации
     transliteration_config = TransliterationConfig(
         enabled=True,
-        standard="Паспортная транслитерация",
+        standard="Паспортная",
         normalize_names=True
     )
     

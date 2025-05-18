@@ -13,7 +13,7 @@ setup(
         "matplotlib",
         "numpy",
     ],
-    author="Author",
+    author="marginalprog",
     author_email="author@example.com",
     description="Библиотека для нечеткого сопоставления данных с поддержкой транслитерации",
     keywords="fuzzy matching, transliteration, data matching",
