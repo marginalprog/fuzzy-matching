@@ -7,12 +7,12 @@
 
 1. Сопоставление данных и поиск похожих записей:
 ```
-python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/variant.json --format2 json --output-matches data/output/matches.json --output-consolidated data/output/consolidated.json --threshold 0.7 --match-fields "Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,Email:0.1:false:RATIO" --verbose
+python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/test_original_ru.json --format2 json --output-matches data/output/matches.json --output-path data/output/consolidated.json --threshold 0.7 --match-fields "Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,Email:0.1:false:RATIO" --verbose
 ```
 
 2. Транслитерация данных между русским и английским языками:
 ```
-python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/russian_data.json --format1 json --target-lang en --output-consolidated data/output/english_data.json --transliterate-fields "Фамилия,Имя,Отчество" --verbose
+python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/russian_data.json --format1 json --target-lang en --output-path data/output/english_data.json --transliterate-fields "Фамилия,Имя,Отчество" --transliteration-standard "Passport" --verbose
 ```
 
 3. Генерация тестовых данных на русском языке с русскими названиями полей:
@@ -30,10 +30,11 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
   --input1, --input2: пути к входным файлам
   --format1, --format2: форматы входных файлов (csv или json)
   --output-matches: путь для сохранения найденных совпадений
-  --output-consolidated: путь для сохранения консолидированных данных
+  --output-path: путь для сохранения результатов (транслитерированных или консолидированных данных)
   --threshold: порог схожести (от 0 до 1)
   --match-fields: конфигурация полей для сопоставления
   --target-lang: целевой язык для транслитерации (ru или en)
+  --transliteration-standard: стандарт транслитерации ("ГОСТ 7.79-2000", "Научная" или "Паспортная")
   --generate-fields: список полей для генерации в режиме generate
   --language: язык генерируемых данных (ru или en)
   --field-names-format: формат названий полей (ru или en)
@@ -179,15 +180,15 @@ def main():
     # Параметры для транслитерации
     parser.add_argument('--target-lang', choices=['ru', 'en'],
                       help="Целевой язык для транслитерации (ru или en)")
-    parser.add_argument('--transliteration-standard', choices=['ГОСТ 7.79-2000', 'Научная', 'Паспортная'], 
-                      default='Паспортная',
-                      help="Стандарт транслитерации (по умолчанию Паспортная)")
+    parser.add_argument('--transliteration-standard', choices=['GOST', 'Scientific', 'Passport'], 
+                      default='Passport',
+                      help="Стандарт транслитерации (по умолчанию Passport)")
     
     # Параметры для вывода
     parser.add_argument('--output-matches',
                       help=f"Путь для сохранения результатов сопоставления (по умолчанию {os.path.join(DATA_OUTPUT_DIR, 'matches.json')})")
-    parser.add_argument('--output-consolidated',
-                      help=f"Путь для сохранения консолидированных данных (по умолчанию {os.path.join(DATA_OUTPUT_DIR, 'consolidated.json')})")
+    parser.add_argument('--output-path',
+                      help=f"Путь для сохранения результатов (транслитерированных или консолидированных данных) (по умолчанию {os.path.join(DATA_OUTPUT_DIR, 'output.json')})")
     parser.add_argument('--output-format', choices=['csv', 'json'], default='json',
                       help="Формат выходных файлов (по умолчанию json)")
     parser.add_argument('--verbose', action='store_true',
@@ -331,10 +332,10 @@ def main():
         )
         
         if args.verbose:
-            print(f"{Colors.GREEN}Сгенерировано {len(original_list)} оригинальных и {len(variant_list)} искаженных записей{Colors.ENDC}")
-            print(f"{Colors.CYAN}Оригинальные данные сохранены в {output_original}{Colors.ENDC}")
-            print(f"{Colors.CYAN}Искаженные данные сохранены в {output_variant}{Colors.ENDC}")
-            print(f"{Colors.YELLOW}Язык данных: {args.language.upper()}{Colors.ENDC}")
+            print(f"\n{Colors.GREEN}Сгенерировано {len(original_list)} оригинальных и {len(variant_list)} искаженных записей{Colors.ENDC}")
+            print(f"\n{Colors.CYAN}Оригинальные данные сохранены в {Colors.YELLOW}{output_original}{Colors.ENDC}")
+            print(f"{Colors.CYAN}Искаженные данные сохранены в {Colors.YELLOW}{output_variant}{Colors.ENDC}")
+            print(f"\n{Colors.YELLOW}Язык данных: {args.language.upper()}{Colors.ENDC}")
             print(f"{Colors.YELLOW}Формат названий полей: {field_names_format.upper()}{Colors.ENDC}")
         
         # Вывод примеров записей в виде красивой таблицы
@@ -430,7 +431,7 @@ def main():
             
     if not os.path.exists(args.input1):
             print(f"{Colors.RED}Ошибка: файл {args.input1} не найден{Colors.ENDC}")
-        sys.exit(1)
+            sys.exit(1)
     
     if args.mode == 'match' and args.input2 and not os.path.exists(args.input2):
         print(f"{Colors.RED}Ошибка: файл {args.input2} не найден{Colors.ENDC}")
@@ -477,18 +478,43 @@ def main():
             fields=fields_to_transliterate
         )
         
+        # Выводим первые 5 транслитерированных записей в виде таблицы
+        if args.verbose:
+            print(f"\n{Colors.CYAN}Первые 5 транслитерированных записей:{Colors.ENDC}")
+            
+            # Создаем таблицу
+            table = PrettyTable()
+            
+            # Добавляем заголовки
+            table.field_names = ["№"] + fields_to_transliterate
+            
+            # Добавляем данные
+            for i, record in enumerate(transliterated_data[:5]):
+                row = [i + 1]  # Номер записи
+                for field in fields_to_transliterate:
+                    row.append(record.get(field, ""))
+                table.add_row(row)
+            
+            # Настраиваем стиль таблицы
+            table.align = "l"  # Выравнивание по левому краю
+            table.border = True
+            table.header = True
+            
+            # Выводим таблицу
+            print(table)
+        
         # Используем путь по умолчанию, если путь не указан
-        output_consolidated = args.output_consolidated or os.path.join(DATA_OUTPUT_DIR, f'transliterated.{args.output_format}')
+        output_path = args.output_path or os.path.join(DATA_OUTPUT_DIR, f'transliterated.{args.output_format}')
         
         # Сохраняем результаты
-        if output_consolidated:
+        if output_path:
             if args.output_format == 'json':
-                matcher.save_consolidated_to_json(transliterated_data, output_consolidated)
+                matcher.save_consolidated_to_json(transliterated_data, output_path)
             else:
-                matcher.save_consolidated_to_csv(transliterated_data, output_consolidated)
+                matcher.save_consolidated_to_csv(transliterated_data, output_path)
             
             if args.verbose:
-                print(f"{Colors.GREEN}Результаты сохранены в {output_consolidated}{Colors.ENDC}")
+                print(f"{Colors.GREEN}Результаты сохранены в {output_path}{Colors.ENDC}")
         else:
             # Выводим результаты на экран
             print(f"\n{Colors.YELLOW}Результаты транслитерации:{Colors.ENDC}")
@@ -545,15 +571,25 @@ def main():
             if args.verbose:
                 print(f"{Colors.CYAN}Совпадения сохранены в {args.output_matches}{Colors.ENDC}")
         
-        if args.output_consolidated:
+        if args.output_path:
             if args.output_format == 'json':
-                matcher.save_consolidated_to_json(consolidated, args.output_consolidated)
+                matcher.save_consolidated_to_json(consolidated, args.output_path)
             else:
-                matcher.save_consolidated_to_csv(consolidated, args.output_consolidated)
+                matcher.save_consolidated_to_csv(consolidated, args.output_path)
             
             if args.verbose:
-                print(f"{Colors.CYAN}Консолидированные данные сохранены в {args.output_consolidated}{Colors.ENDC}")
+                print(f"{Colors.CYAN}Консолидированные данные сохранены в {args.output_path}{Colors.ENDC}")
+
+    print(f"{Colors.YELLOW}Пример 1: Транслитерация с русского на английский (поддерживаются стандарты GOST, Scientific, Passport):{Colors.ENDC}")
+    print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_original_ru.json --format1 json --target-lang en --transliterate-fields \"Фамилия,Имя,Отчество\" --transliteration-standard \"Passport\" --output-path data/output/transliterated_en.json --verbose{Colors.ENDC}")
+    
+    print(f"\n{Colors.YELLOW}Пример 2: Обратная транслитерация с английского на русский (поддерживается только стандарт Passport):{Colors.ENDC}")
+    print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_variant_ru.json --format1 json --target-lang ru --transliteration-standard \"Passport\" --transliterate-fields \"last_name,first_name,middle_name\" --name-fields \"last_name:Фамилия,first_name:Имя,middle_name:Отчество,email:email\" --output-path data/output/transliterated_ru.json --verbose{Colors.ENDC}")
 
 
-if __name__ == '__main__':
-    main() 
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(f"{Colors.RED}Ошибка: {str(e)}{Colors.ENDC}")
+        sys.exit(1) 

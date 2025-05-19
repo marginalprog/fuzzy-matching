@@ -57,7 +57,7 @@ def create_config(
     threshold: float = 0.7, 
     block_field: Optional[str] = None,
     transliteration_enabled: bool = False,
-    transliteration_standard: str = "Паспортная",
+    transliteration_standard: str = "Passport",
     fuzzy_algorithm: Optional[str] = "TOKEN_SORT"
 ) -> MatchConfig:
     """
@@ -220,7 +220,7 @@ def match_datasets(
 def transliterate_dataset(
     dataset: Union[str, List[Dict[str, Any]]], 
     target_lang: str = 'en',
-    transliteration_standard: str = "Паспортная",
+    transliteration_standard: str = "Passport",
     fields: Optional[List[str]] = None,
     field_mapping: Optional[Dict[str, str]] = None
 ) -> List[Dict[str, Any]]:
@@ -229,7 +229,7 @@ def transliterate_dataset(
     
     :param dataset: путь к файлу или список словарей с данными
     :param target_lang: целевой язык транслитерации ('ru' или 'en')
-    :param transliteration_standard: стандарт транслитерации ("ГОСТ 7.79-2000", "Научная" или "Паспортная")
+    :param transliteration_standard: стандарт транслитерации ("GOST", "Scientific" или "Passport")
     :param fields: список полей для транслитерации (если None, используются все текстовые поля)
     :param field_mapping: словарь соответствия полей для загрузки данных из файла
     :return: список транслитерированных записей

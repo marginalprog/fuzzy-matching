@@ -24,8 +24,8 @@ with open(variant_file, 'r', encoding='utf-8') as f:
 # Создаем конфигурацию для сопоставления
 transliteration_config = TransliterationConfig(
     enabled=True,
-    standard="Паспортная",
-    threshold=0.5,
+    standard="Passport",
+    threshold=0.7,
     auto_detect=True,
     normalize_names=True
 )

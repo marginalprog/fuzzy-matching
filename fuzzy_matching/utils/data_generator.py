@@ -86,7 +86,7 @@ class DataGenerator:
             - double_number_probability: вероятность дублирования цифры в телефоне (0.0-1.0)
             - suffix_probability: вероятность добавления суффикса к ФИО (0.0-1.0)
         :param use_patronymic_for_english: если True, для английской локализации будет
-                                         использоваться транслитерированное отчество вместо middle name
+            использоваться транслитерированное отчество вместо middle name
         """
         self.language = language
         self.fake = faker.Faker(self.language.value)
@@ -125,6 +125,7 @@ class DataGenerator:
         self.double_number_probability = probs.get('double_number_probability', self.DEFAULT_PROBABILITIES['double_number_probability'])
         self.suffix_probability = probs.get('suffix_probability', self.DEFAULT_PROBABILITIES['suffix_probability'])
 
+        print(f'Пришло: {probabilities}')
         self.gender_detector = gender.Detector()
 
     def doubling_letter(self, text):
@@ -279,23 +280,7 @@ class DataGenerator:
         # Возвращаем исходный язык
         self.language = original_language
         
-        # Простая транслитерация (можно заменить на более сложную)
-        transliteration_map = {
-            'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
-            'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
-            'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
-            'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
-            'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
-            'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'E',
-            'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M',
-            'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
-            'Ф': 'F', 'Х': 'Kh', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Sch',
-            'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya',
-        }
-        
-        result = ''
-        for char in middle_name_ru:
-            result += transliteration_map.get(char, char)
+        result = translit.transliterate_ru_to_en(middle_name_ru, translit.PASSPORT_STANDARD)
         
         return result
 

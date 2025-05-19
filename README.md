@@ -69,13 +69,13 @@ data/
 #### Сопоставление данных
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/variant.json --format2 json --match-fields "Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,Email:0.1:false:RATIO" --threshold 0.7 --output-matches data/output/matches.json --output-consolidated data/output/consolidated.json --verbose
+python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/test_original_ru.json --format2 json --match-fields "Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,Email:0.1:false:RATIO" --threshold 0.7 --output-matches data/output/matches.json --output-path data/output/consolidated.json --verbose
 ```
 
 #### Транслитерация данных
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/russian_data.json --format1 json --target-lang en --transliterate-fields "Фамилия,Имя,Отчество" --output-consolidated data/output/transliterated.json --verbose
+python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_original_ru.json --format1 json --target-lang en --transliterate-fields "Фамилия,Имя,Отчество" --output-path data/output/transliterated.json --verbose
 ```
 
 #### Генерация тестовых данных
@@ -83,19 +83,19 @@ python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/inp
 ##### Генерация данных на русском языке с русскими названиями полей
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,Email" --output-original data/input/test_original_ru.json --output-variant data/input/test_variant_ru.json --language ru --field-names-format ru --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.3 --change-char-probability 0.4 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,Email" --output-original data/input/test_original_ru.json --output-variant data/input/test_variant_ru.json --language ru --field-names-format ru --verbose
 ```
 
 ##### Генерация данных на английском языке с английскими названиями полей
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,Email" --output-original data/input/test_original_en.json --output-variant data/input/test_variant_en.json --language en --field-names-format en --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.3 --change-char-probability 0.4 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,Email" --output-original data/input/test_original_en.json --output-variant data/input/test_variant_en.json --language en --field-names-format en --verbose
 ```
 
 ##### Генерация данных на английском языке с русскими названиями полей
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,Email" --output-original data/input/test_original_en_ru.json --output-variant data/input/test_variant_en_ru.json --language en --field-names-format ru --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.3 --change-char-probability 0.4 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,Email" --output-original data/input/test_original_en_ru.json --output-variant data/input/test_variant_en_ru.json --language en --field-names-format ru --verbose
 ```
 
 Вы можете контролировать, какие поля генерировать, с помощью параметра `--generate-fields`. 
@@ -142,13 +142,13 @@ python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --d
 Пример использования с CSV:
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.csv --format1 csv --input2 data/input/variant.csv --format2 csv --match-fields "Фамилия:0.4:false:TOKEN_SORT,Имя:0.3:false:PARTIAL_RATIO,Отчество:0.2:false:RATIO,Email:0.1:false:RATIO" --threshold 0.7 --output-matches data/output/matches.json --output-consolidated data/output/consolidated.csv --output-format csv --verbose
+python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.csv --format1 csv --input2 data/input/variant.csv --format2 csv --match-fields "Фамилия:0.4:false:TOKEN_SORT,Имя:0.3:false:PARTIAL_RATIO,Отчество:0.2:false:RATIO,Email:0.1:false:RATIO" --threshold 0.7 --output-matches data/output/matches.json --output-path data/output/consolidated.csv --output-format csv --verbose
 ```
 
 Если ваши CSV-файлы имеют другие имена столбцов, используйте параметр `--name-fields` для маппинга:
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.csv --format1 csv --input2 data/input/variant.csv --format2 csv --name-fields "surname:Фамилия,name:Имя,patronymic:Отчество,mail:Email" --match-fields "Фамилия:0.4:false:TOKEN_SORT,Имя:0.3:false:PARTIAL_RATIO,Отчество:0.2:false:RATIO,Email:0.1:false:RATIO" --threshold 0.7 --output-consolidated data/output/consolidated.csv --output-format csv
+python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.csv --format1 csv --input2 data/input/variant.csv --format2 csv --name-fields "surname:Фамилия,name:Имя,patronymic:Отчество,mail:Email" --match-fields "Фамилия:0.4:false:TOKEN_SORT,Имя:0.3:false:PARTIAL_RATIO,Отчество:0.2:false:RATIO,Email:0.1:false:RATIO" --threshold 0.7 --output-path data/output/consolidated.csv --output-format csv
 ```
 
 ### Через API

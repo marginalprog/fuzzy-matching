@@ -24,54 +24,8 @@ from fuzzy_matching.core.match_config_classes import (
     FuzzyAlgorithm
 )
 from fuzzy_matching.utils.data_generator import DataGenerator, Language
-
-
-def print_table(data, limit=10):
-    """
-    Выводит данные в виде форматированной таблицы.
-    
-    :param data: список словарей с данными
-    :param limit: максимальное количество строк для отображения
-    """
-    if not data:
-        print("Нет данных для отображения")
-        return
-
-    table = PrettyTable()
-    table.field_names = data[0].keys()
-    for row in data[:limit]:
-        table.add_row(row.values())
-
-    table.align = 'l'
-    print(table)
-
-
-def print_matches(matches, limit=5):
-    """
-    Выводит результаты совпадений в виде таблицы.
-    
-    :param matches: список найденных совпадений
-    :param limit: максимальное количество строк для отображения
-    """
-    if not matches:
-        print("Совпадений не найдено")
-        return
-        
-    table = PrettyTable()
-    table.field_names = ["Запись 1", "Запись 2", "Совпадение"]
-    
-    for match in matches[:limit]:
-        rec1 = " ".join(match["Запись 1"])
-        rec2 = " ".join(match["Запись 2"])
-        score = f"{match['Совпадение'][0]:.2f}"
-        table.add_row([rec1, rec2, score])
-    
-    table.align["Запись 1"] = "l"
-    table.align["Запись 2"] = "l"
-    table.align["Совпадение"] = "r"
-    
-    print(f"\nНайдено совпадений: {len(matches)}")
-    print(table)
+from fuzzy_matching.examples.utils import print_table, print_matches, save_example_results, generate_example_data
+from fuzzy_matching.examples.data_examples import PERSONAL_DATA_RU, PERSONAL_DATA_EN
 
 
 def demo_generate_data():
@@ -100,7 +54,7 @@ def demo_generate_data():
     print_table(clean_data, 5)
     
     # Генерация пары наборов данных (оригинальный и искаженный)
-    original_data, variant_data = generator_ru.generate_records_pair(10, fields)
+    original_data, variant_data = generate_example_data(generator_ru, 10, fields)
     print("\nОригинальные данные:")
     print_table(original_data, 3)
     print("\nИскаженные данные:")
@@ -110,9 +64,25 @@ def demo_generate_data():
     generator_en = DataGenerator(language=Language.ENG, probabilities=probabilities)
     fields_en = ['Last Name', 'First Name', 'Middle Name', 'email', 'Phone']
     
+    # Генерация английских данных с правильными полями
     en_data = generator_en.generate_clean_records_list(5, fields_en)
+    
+    # Убедимся, что все поля присутствуют в данных
+    for record in en_data:
+        for field in fields_en:
+            if field not in record:
+                record[field] = f"Example {field}"
+    
     print("\nАнглийские данные:")
     print_table(en_data)
+    
+    # Использование примеров из data_examples.py
+    print("\n3. Примеры русских и английских данных:")
+    print("\nРусские данные из примеров:")
+    print_table(PERSONAL_DATA_RU)
+    
+    print("\nАнглийские данные из примеров:")
+    print_table(PERSONAL_DATA_EN)
     
     # Сохранение данных в файлы
     if not os.path.exists('demo_data'):
@@ -178,54 +148,9 @@ def demo_transliteration():
     """
     print("\n===== СОПОСТАВЛЕНИЕ С ТРАНСЛИТЕРАЦИЕЙ =====\n")
     
-    # Создаем тестовые данные на разных языках
-    russian_data = [
-        {
-            'id': 'ru_1',
-            'Фамилия': 'Иванов',
-            'Имя': 'Александр',
-            'Отчество': 'Сергеевич',
-            'email': 'ivanov@example.ru'
-        },
-        {
-            'id': 'ru_2',
-            'Фамилия': 'Петров',
-            'Имя': 'Михаил',
-            'Отчество': 'Иванович',
-            'email': 'petrov@example.ru'
-        },
-        {
-            'id': 'ru_3',
-            'Фамилия': 'Сидорова',
-            'Имя': 'Елена',
-            'Отчество': 'Александровна',
-            'email': 'sidorova@example.ru'
-        }
-    ]
-    
-    english_data = [
-        {
-            'id': 'en_1',
-            'Фамилия': 'Ivanov',
-            'Имя': 'Alexander',  # Английский вариант имени
-            'Отчество': 'Sergeevich',  # Транслитерированное отчество
-            'email': 'ivanov@example.com'
-        },
-        {
-            'id': 'en_2',
-            'Фамилия': 'Petrov',
-            'Имя': 'Michael',  # Английский эквивалент имени
-            'Отчество': 'Ivanovich',  # Транслитерированное отчество
-            'email': 'petrov@example.com'
-        },
-        {
-            'id': 'en_3',
-            'Фамилия': 'Sydorova',  # Другой вариант транслитерации
-            'Имя': 'Elena',
-            'Отчество': 'Aleksandrovna',  # Другой вариант транслитерации
-            'email': 'sidorova@example.com'
-        }
-    ]
+    # Используем данные из модуля data_examples
+    russian_data = PERSONAL_DATA_RU[:3]
+    english_data = PERSONAL_DATA_EN[:3]
     
     print("Данные на русском:")
     print_table(russian_data)
@@ -236,7 +161,7 @@ def demo_transliteration():
     # Настройка конфигурации с транслитерацией
     transliteration_config = TransliterationConfig(
         enabled=True,
-        standard="Паспортная",  # Стандарт транслитерации
+        standard="Passport",  # Стандарт транслитерации
         threshold=0.7,          # Порог схожести для транслитерации
         auto_detect=True,       # Автоопределение языка
         normalize_names=True    # Нормализация имен

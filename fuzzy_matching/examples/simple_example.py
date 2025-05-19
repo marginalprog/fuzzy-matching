@@ -90,7 +90,7 @@ def demo_transliteration_matching():
     # Настройка конфигурации с транслитерацией
     transliteration_config = TransliterationConfig(
         enabled=True,
-        standard="Паспортная",
+        standard="Passport",
         threshold=0.7,
         auto_detect=True,
         normalize_names=True

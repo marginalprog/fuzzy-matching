@@ -42,7 +42,7 @@ class TransliterationConfig:
     :param normalize_names: нормализовать имена перед сопоставлением
     """
     enabled: bool = False
-    standard: str = "Паспортная"
+    standard: str = "Passport"
     threshold: float = 0.8
     auto_detect: bool = True
     normalize_names: bool = True

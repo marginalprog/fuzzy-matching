@@ -4,7 +4,9 @@
 """
 
 import json
+import os
 import pandas as pd
+from rapidfuzz import fuzz
 
 import fuzzy_matching.utils.transliteration.transliteration_utils as translit
 from fuzzy_matching.core.data_matcher import DataMatcher
@@ -16,8 +18,8 @@ from fuzzy_matching.examples.data_examples import PERSONAL_DATA_RU, PERSONAL_DAT
 def case1_migrate_english_to_russian():
     """
     Кейс 1: Английская компания N хранила данные о работниках на английском языке.
-    Её выкупила Российская компания, и теперь эти данные нужно мигрировать с учетом
-    российских правил транслитерации.
+    Её выкупила Российская компания, и теперь эти данные нужно перевести на русский язык
+    с использованием правил транслитерации для корректного отображения имен на русском.
     """
     print("\n=========== КЕЙС 1: МИГРАЦИЯ ДАННЫХ С АНГЛИЙСКОГО НА РУССКИЙ ===========\n")
     
@@ -80,7 +82,7 @@ def case2_match_mixed_language_records():
     # Создаем конфигурацию для сопоставления с транслитерацией
     transliteration_config = TransliterationConfig(
         enabled=True,
-        standard="Паспортная",
+        standard="Passport",
         threshold=0.7,
         auto_detect=True,
         normalize_names=True
@@ -123,61 +125,89 @@ def case2_match_mixed_language_records():
     print("\n==========================================================\n")
 
 
-def case3_identify_correct_name_variant():
+def case3_demonstrate_gost_standard():
     """
-    Кейс 3: При сопоставлении двух вариантов имени нужно выбрать 
-    более правильный вариант относительно правил транслитерации.
+    Кейс 3: Демонстрация работы стандарта GOST
     """
-    print("\n=========== КЕЙС 3: ВЫБОР ПРАВИЛЬНОГО ВАРИАНТА ИМЕНИ ===========\n")
+    print("\n=========== КЕЙС 3: ДЕМОНСТРАЦИЯ СТАНДАРТА GOST ===========\n")
     
-    # Создаем примеры разных вариантов написания одного и того же имени
-    name_variants = [
-        {"id": "1", "Имя": "Александр", "Язык": "Русский", "Примечание": "Оригинальное имя"},
-        {"id": "2", "Имя": "Alexander", "Язык": "Английский", "Примечание": "Стандартный английский эквивалент"},
-        {"id": "3", "Имя": "Aleksandr", "Язык": "Транслитерация", "Примечание": "Паспортная транслитерация"},
-        {"id": "4", "Имя": "Alexandr", "Язык": "Транслитерация", "Примечание": "Научная транслитерация"},
-        {"id": "5", "Имя": "Aleksander", "Язык": "Транслитерация", "Примечание": "Альтернативный вариант"},
-        {"id": "6", "Имя": "Sasha", "Язык": "Английский", "Примечание": "Уменьшительное имя"}
+    # Примеры русских имен для транслитерации
+    test_names = [
+        "Щербаков",
+        "Чайковский",
+        "Жуков",
+        "Шишкин",
+        "Эйнштейн"
     ]
     
-    print("Варианты написания имени:")
-    print_table(name_variants)
+    print("Примеры транслитерации по стандарту GOST:")
+    print_table([{
+        "Русское имя": name,
+        "Транслитерация": translit.transliterate_ru_to_en(name, translit.GOST_STANDARD)
+    } for name in test_names])
     
-    print("\nСравнение вариантов с оригиналом (Александр):")
+    # Пример обратной транслитерации
+    gost_names = [
+        "Ščerbakov",
+        "Čajkovskij",
+        "Žukov",
+        "Šiškin",
+        "Èjnštejn"
+    ]
     
-    original = "Александр"
-    results = []
+    print("\nПримеры обратной транслитерации:")
+    print_table([{
+        "Имя в GOST": name,
+        "Обратная транслитерация": translit.transliterate_en_to_ru(name, translit.GOST_STANDARD)
+    } for name in gost_names])
     
-    for variant in name_variants[1:]:  # Пропускаем оригинал
-        # Прямое сравнение
-        direct_ratio = fuzz.ratio(original, variant["Имя"]) / 100.0
-        
-        # Сравнение с транслитерацией варианта на русский
-        if variant["Язык"] in ["Английский", "Транслитерация"]:
-            ru_variant = translit.transliterate_en_to_ru(variant["Имя"], translit.PASSPORT_STANDARD)
-            translit_ratio = fuzz.ratio(original, ru_variant) / 100.0
-        else:
-            ru_variant = variant["Имя"]
-            translit_ratio = direct_ratio
-        
-        # Сравнение с транслитерацией оригинала на английский
-        en_original = translit.transliterate_ru_to_en(original, translit.PASSPORT_STANDARD)
-        reverse_translit_ratio = fuzz.ratio(en_original, variant["Имя"]) / 100.0
-        
-        results.append({
-            "Вариант": variant["Имя"],
-            "Язык": variant["Язык"],
-            "Прямое сравнение": f"{direct_ratio:.2f}",
-            "Транслит. на русский": f"{translit_ratio:.2f}",
-            "Сравнение с англ. оригиналом": f"{reverse_translit_ratio:.2f}",
-            "Транслит. вариант": ru_variant if variant["Язык"] != "Русский" else en_original
-        })
+    print("\nВывод: Стандарт GOST обеспечивает однозначное")
+    print("соответствие между русскими и латинскими буквами, что делает")
+    print("транслитерацию обратимой и точной.")
     
-    print_table(results)
+    print("\n==========================================================\n")
+
+
+def case4_direct_transliteration_challenges():
+    """
+    Кейс 4: Демонстрация сложностей прямой транслитерации без промежуточного русского этапа.
+    """
+    print("\n=========== КЕЙС 4: СЛОЖНОСТИ ПРЯМОЙ ТРАНСЛИТЕРАЦИИ ===========\n")
     
-    print("\nВывод: При сопоставлении имен с разными языками, транслитерация")
-    print("значительно повышает точность сопоставления. Наиболее точные результаты")
-    print("достигаются при транслитерации вариантов к языку оригинала.")
+    # Примеры неоднозначных случаев
+    ambiguous_cases = [
+        {
+            "Английский": "Michail",
+            "Правильный русский": translit.transliterate_en_to_ru("Michail", translit.PASSPORT_STANDARD),
+            "Неправильный русский": "Мичаил",  # Пример неправильной транслитерации
+            "Объяснение": "ch -> х, а не ч"
+        },
+        {
+            "Английский": "Shcherbakov",
+            "Правильный русский": translit.transliterate_en_to_ru("Shcherbakov", translit.PASSPORT_STANDARD),
+            "Неправильный русский": "Шчербаков",  # Пример неправильной транслитерации
+            "Объяснение": "shch -> щ, а не ш+ч"
+        },
+        {
+            "Английский": "Yelena",
+            "Правильный русский": translit.transliterate_en_to_ru("Yelena", translit.PASSPORT_STANDARD),
+            "Неправильный русский": "Йелена",  # Пример неправильной транслитерации
+            "Объяснение": "y -> е в начале слова"
+        },
+        {
+            "Английский": "Dmitry",
+            "Правильный русский": translit.transliterate_en_to_ru("Dmitry", translit.PASSPORT_STANDARD),
+            "Неправильный русский": "Дмитриы",  # Пример неправильной транслитерации
+            "Объяснение": "y -> й в конце слова"
+        }
+    ]
+    
+    print("Примеры неоднозначных случаев при прямой транслитерации:")
+    print_table(ambiguous_cases)
+    
+    print("\nВывод: Прямая транслитерация без промежуточного русского этапа")
+    print("может привести к ошибкам из-за неоднозначности соответствий")
+    print("и контекстной зависимости правил транслитерации.")
     
     print("\n==========================================================\n")
 
@@ -186,9 +216,6 @@ def main():
     """
     Основная функция примера.
     """
-    import os
-    from rapidfuzz import fuzz
-    
     # Создаем директорию для результатов
     os.makedirs("results", exist_ok=True)
     
@@ -200,8 +227,11 @@ def main():
     # Кейс 2: Сопоставление записей с разными правилами транслитерации
     case2_match_mixed_language_records()
     
-    # Кейс 3: Выбор правильного варианта имени
-    case3_identify_correct_name_variant()
+    # Кейс 3: Демонстрация стандарта GOST
+    case3_demonstrate_gost_standard()
+    
+    # Кейс 4: Сложности прямой транслитерации
+    case4_direct_transliteration_challenges()
     
     print("===== ЗАВЕРШЕНИЕ ПРИМЕРОВ ТРАНСЛИТЕРАЦИИ =====")
 
