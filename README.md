@@ -128,6 +128,7 @@ python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --d
 - `--change-domain-probability` - вероятность изменения домена в email (от 0 до 1)
 - `--double-number-probability` - вероятность дублирования цифры в телефоне (от 0 до 1)
 - `--suffix-probability` - вероятность добавления суффикса к ФИО (от 0 до 1)
+- `--verbose` - показывает расширенные сведения о выполнении программы
 
 ### Работа с CSV-файлами
 

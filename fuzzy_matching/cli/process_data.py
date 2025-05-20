@@ -395,9 +395,9 @@ def main():
         
         if args.verbose:
             print(f"{Colors.GREEN}Данные успешно сохранены:{Colors.ENDC}")
-            print(f"- Оригинальные данные: {args.output_original}")
-            print(f"- Вариантные данные: {args.output_variant}")
-        
+            print(f"{Colors.CYAN}- Оригинальные данные: {Colors.YELLOW}{args.output_original}{Colors.ENDC}")
+            print(f"{Colors.CYAN}- Вариантные данные:  {Colors.YELLOW}{args.output_variant}{Colors.ENDC}")
+
         return
     
     # Определяем соответствие полей
@@ -555,7 +555,7 @@ def main():
                 matcher.save_consolidated_to_csv(transliterated_data, output_path)
             
             if args.verbose:
-                print(f"{Colors.GREEN}Результаты сохранены в {output_path}{Colors.ENDC}")
+                print(f"{Colors.CYAN}Результаты сохранены в {Colors.YELLOW}{output_path}{Colors.ENDC}\n")
         else:
             # Выводим результаты на экран
             print(f"\n{Colors.YELLOW}Результаты транслитерации:{Colors.ENDC}")
@@ -666,36 +666,33 @@ def main():
                 # Создаем таблицу для консолидированных записей
                 cons_table = PrettyTable()
                 
-                # Определяем поля для таблицы на основе первой консолидированной записи
-                if consolidated and len(consolidated) > 0:
-                    # Получаем список полей и стандартизируем имя поля Email
-                    field_names = []
-                    for key in sorted(consolidated[0].keys()):
-                        normalized_key = 'Email' if key.lower() == 'email' else key
-                        if normalized_key not in field_names:  # Проверяем на дубликаты
-                            field_names.append(normalized_key)
-                    
-                    cons_table.field_names = field_names
-                    
-                    # Добавляем данные в таблицу
-                    for i, record in enumerate(consolidated[:10]):
-                        row = []
-                        for field in field_names:
-                            # Проверяем оба варианта написания email
-                            if field.lower() == 'email':
-                                value = record.get('Email', record.get('email', ""))
-                            else:
-                                value = record.get(field, "")
-                            row.append(value)
-                        cons_table.add_row(row)
-                    
-                    # Настраиваем стиль таблицы
-                    cons_table.align = "l"
-                    cons_table.border = True
-                    cons_table.header = True
-                    
-                    print(cons_table)
-                    print()  # Добавляем отступ между блоками
+                # Определяем поля для таблицы на основе полей сопоставления
+                field_names = [f.field for f in config.fields]
+                
+                # Стандартизируем имя поля Email
+                field_names = ['Email' if f.lower() == 'email' else f for f in field_names]
+                
+                cons_table.field_names = field_names
+                
+                # Добавляем данные в таблицу
+                for i, record in enumerate(consolidated[:10]):
+                    row = []
+                    for field in field_names:
+                        # Проверяем оба варианта написания email
+                        if field.lower() == 'email':
+                            value = record.get('Email', record.get('email', ""))
+                        else:
+                            value = record.get(field, "")
+                        row.append(value)
+                    cons_table.add_row(row)
+                
+                # Настраиваем стиль таблицы
+                cons_table.align = "l"
+                cons_table.border = True
+                cons_table.header = True
+                
+                print(cons_table)
+                print()  # Добавляем отступ между блоками
         
         # Сохраняем результаты
         if args.output_matches:
@@ -705,7 +702,7 @@ def main():
                 matcher.save_matches_to_csv(matches, args.output_matches)
             
             if args.verbose:
-                print(f"\n{Colors.CYAN}Совпадения сохранены в {args.output_matches}{Colors.ENDC}")
+                print(f"\n{Colors.CYAN}Совпадения сохранены в {Colors.YELLOW}{args.output_matches}{Colors.ENDC}")
         
         if args.output_path:
             if args.output_format == 'json':
@@ -714,18 +711,8 @@ def main():
                 matcher.save_consolidated_to_csv(consolidated, args.output_path)
             
             if args.verbose:
-                print(f"{Colors.CYAN}Консолидированные данные сохранены в {args.output_path}{Colors.ENDC}")
+                print(f"{Colors.CYAN}Консолидированные данные сохранены в {Colors.YELLOW}{args.output_path}{Colors.ENDC}")
                 print()  # Добавляем отступ между блоками
-
-    print(f"{Colors.YELLOW}Пример 1: Транслитерация с русского на английский (поддерживаются стандарты GOST, Scientific, Passport):{Colors.ENDC}")
-    print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_original_ru.json --format1 json --target-lang en --transliterate-fields \"Фамилия,Имя,Отчество\" --transliteration-standard \"Passport\" --output-path data/output/transliterated_en.json --verbose{Colors.ENDC}")
-    
-    print(f"\n{Colors.YELLOW}Пример 2: Обратная транслитерация с английского на русский (поддерживается только стандарт Passport):{Colors.ENDC}")
-    print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_variant_ru.json --format1 json --target-lang ru --transliteration-standard \"Passport\" --transliterate-fields \"last_name,first_name,middle_name\" --name-fields \"last_name:Фамилия,first_name:Имя,middle_name:Отчество,email:Email\" --output-path data/output/transliterated_ru.json --verbose{Colors.ENDC}")
-    
-    print(f"\n{Colors.YELLOW}Пример 3: Сопоставление данных с учетом Email:{Colors.ENDC}")
-    print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/test_original_ru.json --format2 json --output-matches data/output/matches.json --output-path data/output/consolidated.json --threshold 0.7 --match-fields \"Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,Email:0.1:false:RATIO\" --verbose{Colors.ENDC}")
-
 
 # Добавляем функции для сохранения данных в JSON и CSV
 def save_to_json(data, filename):
