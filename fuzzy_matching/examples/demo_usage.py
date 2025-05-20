@@ -6,7 +6,7 @@
 1. Генерация тестовых данных
 2. Базовое сопоставление данных
 3. Сопоставление с транслитерацией
-4. Использование предметно-ориентированных алгоритмов
+4. Специализированные алгоритмы для разных типов данных
 5. Загрузка и сохранение данных из/в CSV/JSON
 
 Запуск:
@@ -21,57 +21,11 @@ from prettytable import PrettyTable
 from fuzzy_matching.core.data_matcher import DataMatcher
 from fuzzy_matching.core.match_config_classes import (
     MatchConfig, MatchFieldConfig, TransliterationConfig,
-    FuzzyAlgorithm, DomainSpecificAlgorithm
+    FuzzyAlgorithm
 )
 from fuzzy_matching.utils.data_generator import DataGenerator, Language
-
-
-def print_table(data, limit=10):
-    """
-    Выводит данные в виде форматированной таблицы.
-    
-    :param data: список словарей с данными
-    :param limit: максимальное количество строк для отображения
-    """
-    if not data:
-        print("Нет данных для отображения")
-        return
-
-    table = PrettyTable()
-    table.field_names = data[0].keys()
-    for row in data[:limit]:
-        table.add_row(row.values())
-
-    table.align = 'l'
-    print(table)
-
-
-def print_matches(matches, limit=5):
-    """
-    Выводит результаты совпадений в виде таблицы.
-    
-    :param matches: список найденных совпадений
-    :param limit: максимальное количество строк для отображения
-    """
-    if not matches:
-        print("Совпадений не найдено")
-        return
-        
-    table = PrettyTable()
-    table.field_names = ["Запись 1", "Запись 2", "Совпадение"]
-    
-    for match in matches[:limit]:
-        rec1 = " ".join(match["Запись 1"])
-        rec2 = " ".join(match["Запись 2"])
-        score = f"{match['Совпадение'][0]:.2f}"
-        table.add_row([rec1, rec2, score])
-    
-    table.align["Запись 1"] = "l"
-    table.align["Запись 2"] = "l"
-    table.align["Совпадение"] = "r"
-    
-    print(f"\nНайдено совпадений: {len(matches)}")
-    print(table)
+from fuzzy_matching.examples.utils import print_table, print_matches, save_example_results, generate_example_data
+from fuzzy_matching.examples.data_examples import PERSONAL_DATA_RU, PERSONAL_DATA_EN
 
 
 def demo_generate_data():
@@ -100,7 +54,7 @@ def demo_generate_data():
     print_table(clean_data, 5)
     
     # Генерация пары наборов данных (оригинальный и искаженный)
-    original_data, variant_data = generator_ru.generate_records_pair(10, fields)
+    original_data, variant_data = generate_example_data(generator_ru, 10, fields)
     print("\nОригинальные данные:")
     print_table(original_data, 3)
     print("\nИскаженные данные:")
@@ -110,9 +64,25 @@ def demo_generate_data():
     generator_en = DataGenerator(language=Language.ENG, probabilities=probabilities)
     fields_en = ['Last Name', 'First Name', 'Middle Name', 'email', 'Phone']
     
+    # Генерация английских данных с правильными полями
     en_data = generator_en.generate_clean_records_list(5, fields_en)
+    
+    # Убедимся, что все поля присутствуют в данных
+    for record in en_data:
+        for field in fields_en:
+            if field not in record:
+                record[field] = f"Example {field}"
+    
     print("\nАнглийские данные:")
     print_table(en_data)
+    
+    # Использование примеров из data_examples.py
+    print("\n3. Примеры русских и английских данных:")
+    print("\nРусские данные из примеров:")
+    print_table(PERSONAL_DATA_RU)
+    
+    print("\nАнглийские данные из примеров:")
+    print_table(PERSONAL_DATA_EN)
     
     # Сохранение данных в файлы
     if not os.path.exists('demo_data'):
@@ -178,54 +148,9 @@ def demo_transliteration():
     """
     print("\n===== СОПОСТАВЛЕНИЕ С ТРАНСЛИТЕРАЦИЕЙ =====\n")
     
-    # Создаем тестовые данные на разных языках
-    russian_data = [
-        {
-            'id': 'ru_1',
-            'Фамилия': 'Иванов',
-            'Имя': 'Александр',
-            'Отчество': 'Сергеевич',
-            'email': 'ivanov@example.ru'
-        },
-        {
-            'id': 'ru_2',
-            'Фамилия': 'Петров',
-            'Имя': 'Михаил',
-            'Отчество': 'Иванович',
-            'email': 'petrov@example.ru'
-        },
-        {
-            'id': 'ru_3',
-            'Фамилия': 'Сидорова',
-            'Имя': 'Елена',
-            'Отчество': 'Александровна',
-            'email': 'sidorova@example.ru'
-        }
-    ]
-    
-    english_data = [
-        {
-            'id': 'en_1',
-            'Фамилия': 'Ivanov',
-            'Имя': 'Alexander',  # Английский вариант имени
-            'Отчество': 'Sergeevich',  # Транслитерированное отчество
-            'email': 'ivanov@example.com'
-        },
-        {
-            'id': 'en_2',
-            'Фамилия': 'Petrov',
-            'Имя': 'Michael',  # Английский эквивалент имени
-            'Отчество': 'Ivanovich',  # Транслитерированное отчество
-            'email': 'petrov@example.com'
-        },
-        {
-            'id': 'en_3',
-            'Фамилия': 'Sydorova',  # Другой вариант транслитерации
-            'Имя': 'Elena',
-            'Отчество': 'Aleksandrovna',  # Другой вариант транслитерации
-            'email': 'sidorova@example.com'
-        }
-    ]
+    # Используем данные из модуля data_examples
+    russian_data = PERSONAL_DATA_RU[:3]
+    english_data = PERSONAL_DATA_EN[:3]
     
     print("Данные на русском:")
     print_table(russian_data)
@@ -236,7 +161,7 @@ def demo_transliteration():
     # Настройка конфигурации с транслитерацией
     transliteration_config = TransliterationConfig(
         enabled=True,
-        standard="Паспортная",  # Стандарт транслитерации
+        standard="Passport",  # Стандарт транслитерации
         threshold=0.7,          # Порог схожести для транслитерации
         auto_detect=True,       # Автоопределение языка
         normalize_names=True    # Нормализация имен
@@ -266,11 +191,11 @@ def demo_transliteration():
     
     # Демонстрация транслитерации данных
     print("\nТранслитерация русских данных на английский:")
-    transliterated_en = matcher.translate_data(russian_data, target_lang='en')
+    transliterated_en = matcher.transliterate_data(russian_data, target_lang='en')
     print_table(transliterated_en)
     
     print("\nТранслитерация английских данных на русский:")
-    transliterated_ru = matcher.translate_data(english_data, target_lang='ru')
+    transliterated_ru = matcher.transliterate_data(english_data, target_lang='ru')
     print_table(transliterated_ru)
     
     return matcher, matches, consolidated
@@ -278,9 +203,9 @@ def demo_transliteration():
 
 def demo_domain_specific():
     """
-    Демонстрирует использование предметно-ориентированных алгоритмов.
+    Демонстрирует использование специализированных алгоритмов для различных типов данных.
     """
-    print("\n===== ПРЕДМЕТНО-ОРИЕНТИРОВАННЫЕ АЛГОРИТМЫ =====\n")
+    print("\n===== СПЕЦИАЛИЗИРОВАННЫЕ АЛГОРИТМЫ ДЛЯ РАЗНЫХ ТИПОВ ДАННЫХ =====\n")
     
     # Данные о людях
     person_data1 = [
@@ -317,15 +242,17 @@ def demo_domain_specific():
     
     # Демонстрация для персональных данных
     print("1. Сопоставление персональных данных:")
+    person_fields = [
+        MatchFieldConfig(field='Фамилия', weight=0.4, fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SORT),
+        MatchFieldConfig(field='Имя', weight=0.3, fuzzy_algorithm=FuzzyAlgorithm.PARTIAL_RATIO),
+        MatchFieldConfig(field='Отчество', weight=0.2, fuzzy_algorithm=FuzzyAlgorithm.RATIO),
+        MatchFieldConfig(field='email', weight=0.1, fuzzy_algorithm=FuzzyAlgorithm.RATIO)
+    ]
+    
     person_config = MatchConfig(
-        fields=[
-            MatchFieldConfig(field='Фамилия', weight=0.4),
-            MatchFieldConfig(field='Имя', weight=0.3),
-            MatchFieldConfig(field='Отчество', weight=0.2),
-            MatchFieldConfig(field='email', weight=0.1)
-        ],
+        fields=person_fields,
         threshold=0.7,
-        domain_algorithm=DomainSpecificAlgorithm.PERSON_DATA
+        fuzzy_algorithm=FuzzyAlgorithm.PARTIAL_RATIO  # Базовый алгоритм, если для поля не указан
     )
     
     person_matcher = DataMatcher(config=person_config)
@@ -334,13 +261,15 @@ def demo_domain_specific():
     
     # Демонстрация для товаров
     print("\n2. Сопоставление данных о товарах:")
+    product_fields = [
+        MatchFieldConfig(field='Название', weight=0.8, fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SET),
+        MatchFieldConfig(field='Категория', weight=0.2, fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SET)
+    ]
+    
     product_config = MatchConfig(
-        fields=[
-            MatchFieldConfig(field='Название', weight=0.8),
-            MatchFieldConfig(field='Категория', weight=0.2)
-        ],
+        fields=product_fields,
         threshold=0.7,
-        domain_algorithm=DomainSpecificAlgorithm.PRODUCT_DATA
+        fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SET
     )
     
     product_matcher = DataMatcher(config=product_config)
@@ -349,19 +278,26 @@ def demo_domain_specific():
     
     # Демонстрация для компаний
     print("\n3. Сопоставление данных о компаниях:")
+    company_fields = [
+        MatchFieldConfig(field='Название', weight=0.6, fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SET),
+        MatchFieldConfig(field='Адрес', weight=0.2, fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SORT),
+        MatchFieldConfig(field='ИНН', weight=0.2, fuzzy_algorithm=FuzzyAlgorithm.RATIO)
+    ]
+    
     company_config = MatchConfig(
-        fields=[
-            MatchFieldConfig(field='Название', weight=0.6),
-            MatchFieldConfig(field='Адрес', weight=0.2),
-            MatchFieldConfig(field='ИНН', weight=0.2)
-        ],
+        fields=company_fields,
         threshold=0.7,
-        domain_algorithm=DomainSpecificAlgorithm.COMPANY_DATA
+        fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SET
     )
     
     company_matcher = DataMatcher(config=company_config)
     company_matches, _ = company_matcher.match_and_consolidate(company_data1, company_data2)
     print_matches(company_matches)
+    
+    print("\nСравнение подходов:")
+    print("- Для персональных данных: TOKEN_SORT для фамилий, PARTIAL_RATIO для имен")
+    print("- Для товаров: TOKEN_SET для всех полей (учитывает перемешанные слова)")
+    print("- Для компаний: TOKEN_SET для названий, TOKEN_SORT для адресов")
 
 
 def demo_file_operations():
@@ -473,7 +409,7 @@ def main():
     # Сопоставление с транслитерацией
     demo_transliteration()
     
-    # Предметно-ориентированные алгоритмы
+    # Специализированные алгоритмы для различных типов данных
     demo_domain_specific()
     
     # Операции с файлами

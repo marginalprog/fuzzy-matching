@@ -25,3 +25,40 @@ benchmark_results.csv
 /advanced_benchmark.py
 /benchmark_test.py
 /generate_reports.py
+
+# Генерируемые файлы и каталоги
+/data/*.json
+/data/*.csv
+/fuzzy_matching/results/*.json
+/fuzzy_matching/data/*.json
+/demo_data/
+/results/
+
+# Структурированные директории с данными
+/data/input/
+/data/output/
+/data/input/*.json
+/data/output/*.json
+/data/input/*.csv
+/data/output/*.csv
+
+# Тестовые файлы в корне проекта
+/test_original.json
+/test_variant.json
+/matches.json
+/consolidated.json
+/original_data_list.json
+/variant_data_list.json
+/fuzzy_matching/data_en.json
+/fuzzy_matching/data_ru.json
+
+# Временные и кэш-файлы Python
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.pytype/

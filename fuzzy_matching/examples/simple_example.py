@@ -8,22 +8,8 @@
 from fuzzy_matching.core.data_matcher import DataMatcher
 from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig
 from fuzzy_matching.utils.data_generator import DataGenerator, Language
-from prettytable import PrettyTable
-
-
-def print_table(data):
-    """Выводит данные в виде форматированной таблицы"""
-    if not data:
-        print("Нет данных для отображения")
-        return
-
-    table = PrettyTable()
-    table.field_names = data[0].keys()
-    for row in data:
-        table.add_row(row.values())
-
-    table.align = 'l'
-    print(table)
+from fuzzy_matching.examples.utils import print_table, print_matches, save_example_results
+from fuzzy_matching.examples.data_examples import PERSONAL_DATA_RU, PERSONAL_DATA_EN
 
 
 def generate_test_data():
@@ -79,69 +65,21 @@ def demo_basic_matching():
     
     # Выводим результаты
     print("\nРезультаты сопоставления:")
+    print_matches(matches)
     
-    # Создаем таблицу совпадений
-    if matches:
-        table = PrettyTable()
-        table.field_names = ["Запись 1", "Запись 2", "Совпадение"]
-        
-        for match in matches:
-            rec1 = " ".join(match["Запись 1"])
-            rec2 = " ".join(match["Запись 2"])
-            score = f"{match['Совпадение'][0]:.2f}"
-            table.add_row([rec1, rec2, score])
-        
-        table.align["Запись 1"] = "l"
-        table.align["Запись 2"] = "l"
-        table.align["Совпадение"] = "r"
-        
-        print(f"\nНайдено совпадений: {len(matches)}")
-        print(table)
-    else:
-        print("Совпадений не найдено")
-        
     print(f"\nКонсолидировано записей: {len(consolidated)}")
+    
+    # Сохраняем результаты
+    save_example_results(matches, consolidated, prefix="simple_basic", results_dir="results")
 
 
 def demo_transliteration_matching():
     """Демонстрирует сопоставление данных с транслитерацией."""
     print("\n===== СОПОСТАВЛЕНИЕ С ТРАНСЛИТЕРАЦИЕЙ =====\n")
     
-    # Создаем тестовые данные на разных языках
-    russian_data = [
-        {
-            'id': 'ru_1',
-            'Фамилия': 'Иванов',
-            'Имя': 'Александр',
-            'Отчество': 'Сергеевич',
-            'email': 'ivanov@example.ru'
-        },
-        {
-            'id': 'ru_2',
-            'Фамилия': 'Петров',
-            'Имя': 'Михаил',
-            'Отчество': 'Иванович',
-            'email': 'petrov@example.ru'
-        }
-    ]
-    
-    # Создадим более правильные английские варианты имен с учетом культурных особенностей
-    english_data = [
-        {
-            'id': 'en_1',
-            'Фамилия': 'Ivanov',
-            'Имя': 'Alexander',  # Английский вариант имени
-            'Отчество': 'Sergeevich',  # Транслитерированное отчество
-            'email': 'ivanov@example.com'
-        },
-        {
-            'id': 'en_2',
-            'Фамилия': 'Petrov',
-            'Имя': 'Michael',  # Английский эквивалент имени
-            'Отчество': 'Ivanovich',  # Транслитерированное отчество
-            'email': 'petrov@example.com'
-        }
-    ]
+    # Используем предопределенные данные
+    russian_data = PERSONAL_DATA_RU
+    english_data = PERSONAL_DATA_EN
     
     print("Данные на русском:")
     print_table(russian_data)
@@ -152,7 +90,7 @@ def demo_transliteration_matching():
     # Настройка конфигурации с транслитерацией
     transliteration_config = TransliterationConfig(
         enabled=True,
-        standard="Паспортная",
+        standard="Passport",
         threshold=0.7,
         auto_detect=True,
         normalize_names=True
@@ -178,28 +116,12 @@ def demo_transliteration_matching():
     
     # Выводим результаты
     print("\nРезультаты сопоставления с транслитерацией:")
+    print_matches(matches)
     
-    # Создаем таблицу совпадений
-    if matches:
-        table = PrettyTable()
-        table.field_names = ["Запись 1", "Запись 2", "Совпадение"]
-        
-        for match in matches:
-            rec1 = " ".join(match["Запись 1"])
-            rec2 = " ".join(match["Запись 2"])
-            score = f"{match['Совпадение'][0]:.2f}"
-            table.add_row([rec1, rec2, score])
-        
-        table.align["Запись 1"] = "l"
-        table.align["Запись 2"] = "l"
-        table.align["Совпадение"] = "r"
-        
-        print(f"\nНайдено совпадений: {len(matches)}")
-        print(table)
-    else:
-        print("Совпадений не найдено")
-        
     print(f"\nКонсолидировано записей: {len(consolidated)}")
+    
+    # Сохраняем результаты
+    save_example_results(matches, consolidated, prefix="simple_translit", results_dir="results")
 
 
 def main():

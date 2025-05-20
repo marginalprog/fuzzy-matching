@@ -4,80 +4,27 @@
 """
 
 import json
+import os
 import pandas as pd
-from prettytable import PrettyTable
+from rapidfuzz import fuzz
 
 import fuzzy_matching.utils.transliteration.transliteration_utils as translit
 from fuzzy_matching.core.data_matcher import DataMatcher
 from fuzzy_matching.core.match_config_classes import MatchConfig, MatchFieldConfig, TransliterationConfig
-
-
-def print_table(data):
-    """Выводит данные в виде форматированной таблицы"""
-    if not data:
-        print("Нет данных для отображения")
-        return
-
-    table = PrettyTable()
-    table.field_names = data[0].keys()
-    for row in data:
-        table.add_row(row.values())
-
-    table.align = 'l'
-    print(table)
+from fuzzy_matching.examples.utils import print_table, print_matches, save_example_results
+from fuzzy_matching.examples.data_examples import PERSONAL_DATA_RU, PERSONAL_DATA_EN
 
 
 def case1_migrate_english_to_russian():
     """
     Кейс 1: Английская компания N хранила данные о работниках на английском языке.
-    Её выкупила Российская компания, и теперь эти данные нужно мигрировать с учетом
-    российских правил транслитерации.
+    Её выкупила Российская компания, и теперь эти данные нужно перевести на русский язык
+    с использованием правил транслитерации для корректного отображения имен на русском.
     """
     print("\n=========== КЕЙС 1: МИГРАЦИЯ ДАННЫХ С АНГЛИЙСКОГО НА РУССКИЙ ===========\n")
     
     # Загружаем данные английской компании
-    english_data = [
-        {
-            'id': 'E001',
-            'last_name': 'Ivanov',
-            'first_name': 'Alexander',
-            'middle_name': 'Sergeevich',
-            'position': 'CEO',
-            'email': 'aivanov@example.com'
-        },
-        {
-            'id': 'E002',
-            'last_name': 'Petrov',
-            'first_name': 'Mikhail',
-            'middle_name': 'Ivanovich',
-            'position': 'CTO',
-            'email': 'mpetrov@example.com'
-        },
-        {
-            'id': 'E003',
-            'last_name': 'Kuznetsova',
-            'first_name': 'Elena',
-            'middle_name': 'Alexandrovna',
-            'position': 'CFO',
-            'email': 'ekuznetsova@example.com'
-        },
-        {
-            'id': 'E004',
-            'last_name': 'Smirnov',
-            'first_name': 'Dmitry',
-            'middle_name': 'Petrovich',
-            'position': 'CIO',
-            'email': 'dsmirnov@example.com'
-        },
-        {
-            'id': 'E005',
-            'last_name': 'Sokolov',
-            'first_name': 'Vladimir',
-            'middle_name': 'Nikolaevich',
-            'position': 'COO',
-            'email': 'vsokolov@example.com'
-        }
-    ]
+    english_data = PERSONAL_DATA_EN
     
     print("Исходные данные английской компании:")
     print_table(english_data)
@@ -96,10 +43,9 @@ def case1_migrate_english_to_russian():
     for employee in english_data:
         ru_employee = {
             'ID': employee['id'],
-            'Фамилия': translit.transliterate_en_to_ru(employee['last_name'], translit.PASSPORT_STANDARD),
-            'Имя': translit.transliterate_en_to_ru(employee['first_name'], translit.PASSPORT_STANDARD),
-            'Отчество': translit.transliterate_en_to_ru(employee['middle_name'], translit.PASSPORT_STANDARD),
-            'Должность': employee['position'],
+            'Фамилия': translit.transliterate_en_to_ru(employee['Фамилия'], translit.PASSPORT_STANDARD),
+            'Имя': translit.transliterate_en_to_ru(employee['Имя'], translit.PASSPORT_STANDARD),
+            'Отчество': translit.transliterate_en_to_ru(employee['Отчество'], translit.PASSPORT_STANDARD),
             'Email': employee['email']
         }
         russian_data.append(ru_employee)
@@ -108,10 +54,10 @@ def case1_migrate_english_to_russian():
     print_table(russian_data)
     
     # Сохраняем результат в JSON
-    with open('russian_employees.json', 'w', encoding='utf-8') as f:
+    with open('results/russian_employees.json', 'w', encoding='utf-8') as f:
         json.dump(russian_data, f, ensure_ascii=False, indent=4)
     
-    print("\nДанные сохранены в russian_employees.json")
+    print("\nДанные сохранены в results/russian_employees.json")
     print("\n==========================================================\n")
 
 
@@ -122,61 +68,9 @@ def case2_match_mixed_language_records():
     """
     print("\n=========== КЕЙС 2: СОПОСТАВЛЕНИЕ ЗАПИСЕЙ С РАЗНЫМИ ПРАВИЛАМИ ТРАНСЛИТЕРАЦИИ ===========\n")
     
-    # Создаем данные для сопоставления - разные варианты написания одних и тех же имен
-    russian_records = [
-        {
-            'id': 'R001',
-            'Фамилия': 'Иванов',
-            'Имя': 'Александр',
-            'Отчество': 'Сергеевич',
-            'Email': 'ivanov@company.ru'
-        },
-        {
-            'id': 'R002',
-            'Фамилия': 'Петров',
-            'Имя': 'Михаил',
-            'Отчество': 'Иванович',
-            'Email': 'petrov@company.ru'
-        },
-        {
-            'id': 'R003',
-            'Фамилия': 'Кузнецова',
-            'Имя': 'Елена',
-            'Отчество': 'Александровна',
-            'Email': 'kuznecova@company.ru'
-        }
-    ]
-    
-    english_records = [
-        {
-            'id': 'E001',
-            'Фамилия': 'Ivanov',
-            'Имя': 'Alexander',  # Английский вариант имени
-            'Отчество': 'Sergeevich',
-            'Email': 'aivanov@company.com'
-        },
-        {
-            'id': 'E002',
-            'Фамилия': 'Petrov',
-            'Имя': 'Michail',  # Научная транслитерация
-            'Отчество': 'Ivanovich',
-            'Email': 'mpetrov@company.com'
-        },
-        {
-            'id': 'E003',
-            'Фамилия': 'Kuznetsova',  # Разные правила транслитерации
-            'Имя': 'Elena',
-            'Отчество': 'Alexandrovna',
-            'Email': 'ekuznetsova@company.com'
-        },
-        {
-            'id': 'E004',
-            'Фамилия': 'Sidorov',  # Запись без соответствия
-            'Имя': 'Sergey',
-            'Отчество': 'Dmitrievich',
-            'Email': 'ssidorov@company.com'
-        }
-    ]
+    # Используем предопределенные данные
+    russian_records = PERSONAL_DATA_RU[:3]
+    english_records = PERSONAL_DATA_EN[:4]  # Добавляем одну запись без соответствия
     
     # Показываем исходные данные
     print("Записи на русском языке:")
@@ -188,7 +82,7 @@ def case2_match_mixed_language_records():
     # Создаем конфигурацию для сопоставления с транслитерацией
     transliteration_config = TransliterationConfig(
         enabled=True,
-        standard="Паспортная",
+        standard="Passport",
         threshold=0.7,
         auto_detect=True,
         normalize_names=True
@@ -211,21 +105,7 @@ def case2_match_mixed_language_records():
     
     # Показываем результаты сопоставления
     print("\nРезультаты сопоставления с учетом транслитерации:")
-    
-    table = PrettyTable()
-    table.field_names = ["Русская запись", "Английская запись", "Схожесть"]
-    
-    for match in matches:
-        ru = " ".join(match["Запись 1"])
-        en = " ".join(match["Запись 2"])
-        score = f"{match['Совпадение'][0]:.2f}"
-        table.add_row([ru, en, score])
-    
-    table.align["Русская запись"] = "l"
-    table.align["Английская запись"] = "l"
-    table.align["Схожесть"] = "r"
-    
-    print(table)
+    print_matches(matches)
     
     # Создаем DataFrame для удобного просмотра консолидированных данных
     df_consolidated = pd.DataFrame(consolidated)
@@ -239,90 +119,107 @@ def case2_match_mixed_language_records():
     else:
         print("Консолидированные записи отсутствуют")
     
+    # Сохраняем результаты
+    save_example_results(matches, consolidated, prefix="translit_mixed", results_dir="results")
+    
     print("\n==========================================================\n")
 
 
-def case3_identify_correct_name_variant():
+def case3_demonstrate_gost_standard():
     """
-    Кейс 3: При сопоставлении двух вариантов имени нужно выбрать 
-    более правильный вариант относительно правил транслитерации.
+    Кейс 3: Демонстрация работы стандарта GOST
     """
-    print("\n=========== КЕЙС 3: ВЫБОР ПРАВИЛЬНОГО ВАРИАНТА ИМЕНИ ===========\n")
+    print("\n=========== КЕЙС 3: ДЕМОНСТРАЦИЯ СТАНДАРТА GOST ===========\n")
     
-    # Варианты имен для анализа
-    examples = [
-        ("Александр", ["Alexander", "Aleksandr", "Alexandr"]),
-        ("Юлия", ["Julia", "Yulia", "Iuliia"]),
-        ("Щербаков", ["Shcherbakov", "Scherbakov", "Scherbakoff"]),
-        ("Евгений", ["Evgeny", "Yevgeny", "Eugene", "Eugenii"]),
-        ("Ксения", ["Ksenia", "Xenia", "Kseniya"])
+    # Примеры русских имен для транслитерации
+    test_names = [
+        "Щербаков",
+        "Чайковский",
+        "Жуков",
+        "Шишкин",
+        "Эйнштейн"
     ]
     
-    # Создаем конфигурацию для анализа транслитерации
-    transliteration_config = TransliterationConfig(
-        enabled=True,
-        standard="Паспортная",
-        normalize_names=True
-    )
+    print("Примеры транслитерации по стандарту GOST:")
+    print_table([{
+        "Русское имя": name,
+        "Транслитерация": translit.transliterate_ru_to_en(name, translit.GOST_STANDARD)
+    } for name in test_names])
     
-    match_config = MatchConfig(
-        fields=[
-            MatchFieldConfig(field='name', weight=1.0, transliterate=True)
-        ],
-        transliteration=transliteration_config
-    )
-    
-    matcher = DataMatcher(config=match_config)
-    
-    # Анализируем каждый пример
-    table = PrettyTable()
-    table.field_names = ["Русское имя", "Варианты на английском", "Наилучший вариант", "Схожесть"]
-    
-    for ru_name, en_variants in examples:
-        best_variant = matcher.select_best_transliteration_variant(en_variants, target_lang='ru')
-        
-        # Вычисляем схожесть лучшего варианта с оригиналом
-        ru_trans = translit.transliterate_en_to_ru(best_variant, translit.PASSPORT_STANDARD)
-        from rapidfuzz import fuzz
-        similarity = fuzz.token_sort_ratio(ru_name.lower(), ru_trans.lower()) / 100.0
-        
-        # Добавляем в таблицу
-        table.add_row([ru_name, ", ".join(en_variants), best_variant, f"{similarity:.2f}"])
-    
-    print("Выбор наилучшего варианта транслитерации для русских имен:")
-    print(table)
-    
-    # Обратное преобразование - с русского на английский
-    rev_examples = [
-        (["Aleksandr", "Alexander", "Alex"], "Александр"),
-        (["Yulia", "Julia", "Yuliya"], "Юлия"),
-        (["Sergei", "Sergey", "Serge"], "Сергей"),
-        (["Maria", "Mariya", "Mary"], "Мария")
+    # Пример обратной транслитерации
+    gost_names = [
+        "Ščerbakov",
+        "Čajkovskij",
+        "Žukov",
+        "Šiškin",
+        "Èjnštejn"
     ]
     
-    table = PrettyTable()
-    table.field_names = ["Английские варианты", "Русское имя", "Наилучший вариант", "Схожесть"]
+    print("\nПримеры обратной транслитерации:")
+    print_table([{
+        "Имя в GOST": name,
+        "Обратная транслитерация": translit.transliterate_en_to_ru(name, translit.GOST_STANDARD)
+    } for name in gost_names])
     
-    for en_variants, ru_name in rev_examples:
-        best_variant = matcher.select_best_transliteration_variant(en_variants, target_lang='ru')
-        
-        # Вычисляем схожесть лучшего варианта с русским оригиналом
-        ru_trans = translit.transliterate_en_to_ru(best_variant, translit.PASSPORT_STANDARD)
-        from rapidfuzz import fuzz
-        similarity = fuzz.token_sort_ratio(ru_name.lower(), ru_trans.lower()) / 100.0
-        
-        # Добавляем в таблицу
-        table.add_row([", ".join(en_variants), ru_name, best_variant, f"{similarity:.2f}"])
+    print("\nВывод: Стандарт GOST обеспечивает однозначное")
+    print("соответствие между русскими и латинскими буквами, что делает")
+    print("транслитерацию обратимой и точной.")
     
-    print("\nВыбор наилучшего английского варианта для русских имен:")
-    print(table)
+    print("\n==========================================================\n")
+
+
+def case4_direct_transliteration_challenges():
+    """
+    Кейс 4: Демонстрация сложностей прямой транслитерации без промежуточного русского этапа.
+    """
+    print("\n=========== КЕЙС 4: СЛОЖНОСТИ ПРЯМОЙ ТРАНСЛИТЕРАЦИИ ===========\n")
+    
+    # Примеры неоднозначных случаев
+    ambiguous_cases = [
+        {
+            "Английский": "Michail",
+            "Правильный русский": translit.transliterate_en_to_ru("Michail", translit.PASSPORT_STANDARD),
+            "Неправильный русский": "Мичаил",  # Пример неправильной транслитерации
+            "Объяснение": "ch -> х, а не ч"
+        },
+        {
+            "Английский": "Shcherbakov",
+            "Правильный русский": translit.transliterate_en_to_ru("Shcherbakov", translit.PASSPORT_STANDARD),
+            "Неправильный русский": "Шчербаков",  # Пример неправильной транслитерации
+            "Объяснение": "shch -> щ, а не ш+ч"
+        },
+        {
+            "Английский": "Yelena",
+            "Правильный русский": translit.transliterate_en_to_ru("Yelena", translit.PASSPORT_STANDARD),
+            "Неправильный русский": "Йелена",  # Пример неправильной транслитерации
+            "Объяснение": "y -> е в начале слова"
+        },
+        {
+            "Английский": "Dmitry",
+            "Правильный русский": translit.transliterate_en_to_ru("Dmitry", translit.PASSPORT_STANDARD),
+            "Неправильный русский": "Дмитриы",  # Пример неправильной транслитерации
+            "Объяснение": "y -> й в конце слова"
+        }
+    ]
+    
+    print("Примеры неоднозначных случаев при прямой транслитерации:")
+    print_table(ambiguous_cases)
+    
+    print("\nВывод: Прямая транслитерация без промежуточного русского этапа")
+    print("может привести к ошибкам из-за неоднозначности соответствий")
+    print("и контекстной зависимости правил транслитерации.")
     
     print("\n==========================================================\n")
 
 
 def main():
-    """Основная функция для демонстрации кейсов использования транслитерации"""
-    print("\n===== ДЕМОНСТРАЦИЯ КЕЙСОВ ИСПОЛЬЗОВАНИЯ ТРАНСЛИТЕРАЦИИ =====\n")
+    """
+    Основная функция примера.
+    """
+    # Создаем директорию для результатов
+    os.makedirs("results", exist_ok=True)
+    
+    print("===== ПРИМЕРЫ ИСПОЛЬЗОВАНИЯ ТРАНСЛИТЕРАЦИИ =====\n")
     
     # Кейс 1: Миграция данных с английского на русский
     case1_migrate_english_to_russian()
@@ -330,10 +227,13 @@ def main():
     # Кейс 2: Сопоставление записей с разными правилами транслитерации
     case2_match_mixed_language_records()
     
-    # Кейс 3: Выбор правильного варианта имени
-    case3_identify_correct_name_variant()
-
-    print("\n===== ЗАВЕРШЕНИЕ ДЕМОНСТРАЦИИ =====\n")
+    # Кейс 3: Демонстрация стандарта GOST
+    case3_demonstrate_gost_standard()
+    
+    # Кейс 4: Сложности прямой транслитерации
+    case4_direct_transliteration_challenges()
+    
+    print("===== ЗАВЕРШЕНИЕ ПРИМЕРОВ ТРАНСЛИТЕРАЦИИ =====")
 
 
 if __name__ == "__main__":

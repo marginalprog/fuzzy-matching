@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Точка входа для запуска библиотеки fuzzy_matching.
+Главная точка входа для пакета fuzzy_matching.
 """
 
 from fuzzy_matching.cli.main import main

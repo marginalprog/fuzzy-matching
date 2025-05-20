@@ -22,7 +22,7 @@ class TestTransliteration(unittest.TestCase):
         # Создаем конфигурацию с включенной транслитерацией
         transliteration_config = TransliterationConfig(
             enabled=True,
-            standard="Паспортная",
+            standard="Passport",
             normalize_names=True
         )
         
