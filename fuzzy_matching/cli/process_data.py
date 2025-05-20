@@ -49,6 +49,8 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
 import argparse
 import sys
 import os
+import json
+import csv
 from prettytable import PrettyTable
 
 # Классы для цветного вывода в терминале
@@ -271,7 +273,7 @@ def main():
     # Режим генерации тестовых данных
     if args.mode == 'generate':
         if args.verbose:
-            print(f"{Colors.BOLD}{Colors.GREEN}Генерация тестовых данных...{Colors.ENDC}")
+            print(f"\n{Colors.BOLD}{Colors.GREEN}Генерация тестовых данных...{Colors.ENDC}")
         
         # Определяем вероятности искажений
         probabilities = {
@@ -302,7 +304,12 @@ def main():
             # Создаем поля с правильными именами в зависимости от формата названий полей
             gen_fields = []
             for field_name in selected_fields:
-                gen_fields.append({'name': field_name, 'type': field_name.lower()})
+                # Приводим поле email к стандартному виду для избежания проблем с регистром
+                field_type = field_name.lower()
+                if field_type == 'email':
+                    field_name = 'Email'  # Стандартизируем имя поля Email
+                
+                gen_fields.append({'name': field_name, 'type': field_type})
             
             # Добавляем id, если его нет, так как он необходим для работы
             if not any(field['name'] == 'id' for field in gen_fields):
@@ -338,47 +345,58 @@ def main():
             print(f"\n{Colors.YELLOW}Язык данных: {args.language.upper()}{Colors.ENDC}")
             print(f"{Colors.YELLOW}Формат названий полей: {field_names_format.upper()}{Colors.ENDC}")
         
-        # Вывод примеров записей в виде красивой таблицы
-        print(f"\n{Colors.YELLOW}{Colors.BOLD}Примеры оригинальных и искаженных записей:{Colors.ENDC}")
+        # Вывод первых 5 записей сгенерированных и изменённых данных в виде таблицы
+        print(f"\n{Colors.CYAN}Первые 5 сгенерированных и измененных записей:{Colors.ENDC}")
         
         # Создаем таблицу
         table = PrettyTable()
         
-        # Определяем заголовки на основе первой записи
-        if original_list and variant_list:
-            # Получаем все уникальные ключи из обоих наборов
-            all_keys = set()
-            for record in original_list[:5] + variant_list[:5]:
-                all_keys.update(record.keys())
+        # Получаем все уникальные ключи из обоих наборов
+        all_keys = set()
+        for record in original_list[:5] + variant_list[:5]:
+            all_keys.update(record.keys())
+        
+        # Добавляем столбец для указания типа записи (оригинал/искаженная)
+        field_names = ["Тип"] + sorted(all_keys)
+        table.field_names = field_names
+        
+        # Добавляем данные в таблицу
+        for i in range(min(5, len(original_list))):
+            orig_row = ["Оригинал"]
+            for key in field_names[1:]:  # Пропускаем первый столбец "Тип"
+                orig_row.append(original_list[i].get(key, ""))
+            table.add_row(orig_row)
             
-            # Добавляем столбец для указания типа записи (оригинал/искаженная)
-            field_names = ["Тип"] + sorted(all_keys)
-            table.field_names = field_names
-            
-            # Добавляем данные в таблицу
-            for i in range(min(5, len(original_list))):
-                orig_row = ["Оригинал"]
+            if i < len(variant_list):
+                var_row = ["Искаженная"]
                 for key in field_names[1:]:  # Пропускаем первый столбец "Тип"
-                    orig_row.append(original_list[i].get(key, ""))
-                table.add_row(orig_row)
+                    var_row.append(variant_list[i].get(key, ""))
+                table.add_row(var_row)
                 
-                if i < len(variant_list):
-                    var_row = ["Искаженная"]
-                    for key in field_names[1:]:  # Пропускаем первый столбец "Тип"
-                        var_row.append(variant_list[i].get(key, ""))
-                    table.add_row(var_row)
-                    
-                    # Добавляем пустую строку для разделения пар записей
-                    if i < min(4, len(original_list) - 1):
-                        table.add_row([""] * len(field_names))
-            
-            # Настраиваем стиль таблицы
-            table.align = "l"  # Выравнивание по левому краю
-            table.border = True
-            table.header = True
-            
-            # Выводим таблицу
-            print(table)
+                # Добавляем пустую строку для разделения пар записей
+                if i < min(4, len(original_list) - 1):
+                    table.add_row([""] * len(field_names))
+        
+        # Настраиваем стиль таблицы
+        table.align = "l"  # Выравнивание по левому краю
+        table.border = True
+        table.header = True
+        
+        # Выводим таблицу
+        print(table)
+        
+        # Сохраняем результаты
+        if args.output_format == 'json':
+            save_to_json(original_list, args.output_original)
+            save_to_json(variant_list, args.output_variant)
+        else:
+            save_to_csv(original_list, args.output_original)
+            save_to_csv(variant_list, args.output_variant)
+        
+        if args.verbose:
+            print(f"{Colors.GREEN}Данные успешно сохранены:{Colors.ENDC}")
+            print(f"- Оригинальные данные: {args.output_original}")
+            print(f"- Вариантные данные: {args.output_variant}")
         
         return
     
@@ -478,30 +496,53 @@ def main():
             fields=fields_to_transliterate
         )
         
-        # Выводим первые 5 транслитерированных записей в виде таблицы
+        # Выводим первые 5 оригинальных и транслитерированных записей в виде таблицы
         if args.verbose:
-            print(f"\n{Colors.CYAN}Первые 5 транслитерированных записей:{Colors.ENDC}")
+            print(f"\n{Colors.CYAN}Первые 5 оригинальных записей:{Colors.ENDC}")
             
-            # Создаем таблицу
-            table = PrettyTable()
+            # Создаем таблицу для оригинальных данных
+            orig_table = PrettyTable()
             
             # Добавляем заголовки
-            table.field_names = ["№"] + fields_to_transliterate
+            orig_table.field_names = ["№"] + fields_to_transliterate
+            
+            # Добавляем данные
+            for i, record in enumerate(data1[:5]):
+                row = [i + 1]  # Номер записи
+                for field in fields_to_transliterate:
+                    row.append(record.get(field, ""))
+                orig_table.add_row(row)
+            
+            # Настраиваем стиль таблицы
+            orig_table.align = "l"  # Выравнивание по левому краю
+            orig_table.border = True
+            orig_table.header = True
+            
+            # Выводим таблицу
+            print(orig_table)
+            
+            print(f"\n{Colors.CYAN}Первые 5 транслитерированных записей:{Colors.ENDC}")
+            
+            # Создаем таблицу для транслитерированных данных
+            trans_table = PrettyTable()
+            
+            # Добавляем заголовки
+            trans_table.field_names = ["№"] + fields_to_transliterate
             
             # Добавляем данные
             for i, record in enumerate(transliterated_data[:5]):
                 row = [i + 1]  # Номер записи
                 for field in fields_to_transliterate:
                     row.append(record.get(field, ""))
-                table.add_row(row)
+                trans_table.add_row(row)
             
             # Настраиваем стиль таблицы
-            table.align = "l"  # Выравнивание по левому краю
-            table.border = True
-            table.header = True
+            trans_table.align = "l"  # Выравнивание по левому краю
+            trans_table.border = True
+            trans_table.header = True
             
             # Выводим таблицу
-            print(table)
+            print(trans_table)
         
         # Используем путь по умолчанию, если путь не указан
         output_path = args.output_path or os.path.join(DATA_OUTPUT_DIR, f'transliterated.{args.output_format}')
@@ -553,13 +594,108 @@ def main():
         
         # Выполняем сопоставление
         if args.verbose:
-            print(f"{Colors.CYAN}Сопоставление данных...{Colors.ENDC}")
+            print(f"\n{Colors.CYAN}Сопоставление данных...{Colors.ENDC}")
         
         matches, consolidated = matcher.match_and_consolidate(data1, data2)
         
         if args.verbose:
-            print(f"{Colors.GREEN}Найдено {len(matches)} совпадений{Colors.ENDC}")
+            print(f"\n{Colors.GREEN}Найдено {len(matches)} совпадений{Colors.ENDC}")
             print(f"{Colors.GREEN}Консолидировано {len(consolidated)} записей{Colors.ENDC}")
+            
+            # Выводим примеры сопоставлений
+            if matches:
+                print(f"\n{Colors.CYAN}Примеры сопоставлений (первые 5):{Colors.ENDC}")
+                
+                # Создаем таблицу для сопоставлений
+                match_table = PrettyTable()
+                
+                # Определяем поля для таблицы на основе полей сопоставления
+                field_names = [f.field for f in config.fields]
+                
+                # Стандартизируем имя поля Email
+                field_names = ['Email' if f.lower() == 'email' else f for f in field_names]
+                
+                match_table.field_names = ["Тип"] + field_names + ["Схожесть"]
+                
+                # Добавляем данные в таблицу
+                for match in matches[:5]:
+                    orig = match['Оригинал']
+                    var = match['Вариант']
+                    similarity = match['Схожесть']
+                    
+                    # Добавляем строку для оригинала
+                    orig_row = ["Оригинал"]
+                    for field in field_names:
+                        # Проверяем оба варианта написания email
+                        if field.lower() == 'email':
+                            value = orig.get('Email', orig.get('email', ""))
+                        else:
+                            value = orig.get(field, "")
+                        orig_row.append(value)
+                    orig_row.append("")  # Пустая ячейка для схожести
+                    match_table.add_row(orig_row)
+                    
+                    # Добавляем строку для варианта
+                    var_row = ["Вариант"]
+                    for field in field_names:
+                        # Проверяем оба варианта написания email
+                        if field.lower() == 'email':
+                            value = var.get('Email', var.get('email', ""))
+                        else:
+                            value = var.get(field, "")
+                        var_row.append(value)
+                    var_row.append(f"{similarity:.2%}")  # Схожесть
+                    match_table.add_row(var_row)
+                    
+                    # Добавляем пустую строку для разделения пар записей
+                    if match != matches[:5][-1]:
+                        match_table.add_row([""] * len(match_table.field_names))
+                
+                # Настраиваем стиль таблицы
+                match_table.align = "l"
+                match_table.border = True
+                match_table.header = True
+                
+                print(match_table)
+                print()  # Добавляем отступ между блоками
+            
+            # Выводим примеры консолидированных записей
+            if consolidated:
+                print(f"\n{Colors.CYAN}Примеры консолидированных записей (первые 10):{Colors.ENDC}")
+                
+                # Создаем таблицу для консолидированных записей
+                cons_table = PrettyTable()
+                
+                # Определяем поля для таблицы на основе первой консолидированной записи
+                if consolidated and len(consolidated) > 0:
+                    # Получаем список полей и стандартизируем имя поля Email
+                    field_names = []
+                    for key in sorted(consolidated[0].keys()):
+                        normalized_key = 'Email' if key.lower() == 'email' else key
+                        if normalized_key not in field_names:  # Проверяем на дубликаты
+                            field_names.append(normalized_key)
+                    
+                    cons_table.field_names = field_names
+                    
+                    # Добавляем данные в таблицу
+                    for i, record in enumerate(consolidated[:10]):
+                        row = []
+                        for field in field_names:
+                            # Проверяем оба варианта написания email
+                            if field.lower() == 'email':
+                                value = record.get('Email', record.get('email', ""))
+                            else:
+                                value = record.get(field, "")
+                            row.append(value)
+                        cons_table.add_row(row)
+                    
+                    # Настраиваем стиль таблицы
+                    cons_table.align = "l"
+                    cons_table.border = True
+                    cons_table.header = True
+                    
+                    print(cons_table)
+                    print()  # Добавляем отступ между блоками
         
         # Сохраняем результаты
         if args.output_matches:
@@ -569,7 +705,7 @@ def main():
                 matcher.save_matches_to_csv(matches, args.output_matches)
             
             if args.verbose:
-                print(f"{Colors.CYAN}Совпадения сохранены в {args.output_matches}{Colors.ENDC}")
+                print(f"\n{Colors.CYAN}Совпадения сохранены в {args.output_matches}{Colors.ENDC}")
         
         if args.output_path:
             if args.output_format == 'json':
@@ -579,13 +715,33 @@ def main():
             
             if args.verbose:
                 print(f"{Colors.CYAN}Консолидированные данные сохранены в {args.output_path}{Colors.ENDC}")
+                print()  # Добавляем отступ между блоками
 
     print(f"{Colors.YELLOW}Пример 1: Транслитерация с русского на английский (поддерживаются стандарты GOST, Scientific, Passport):{Colors.ENDC}")
     print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_original_ru.json --format1 json --target-lang en --transliterate-fields \"Фамилия,Имя,Отчество\" --transliteration-standard \"Passport\" --output-path data/output/transliterated_en.json --verbose{Colors.ENDC}")
     
     print(f"\n{Colors.YELLOW}Пример 2: Обратная транслитерация с английского на русский (поддерживается только стандарт Passport):{Colors.ENDC}")
-    print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_variant_ru.json --format1 json --target-lang ru --transliteration-standard \"Passport\" --transliterate-fields \"last_name,first_name,middle_name\" --name-fields \"last_name:Фамилия,first_name:Имя,middle_name:Отчество,email:email\" --output-path data/output/transliterated_ru.json --verbose{Colors.ENDC}")
+    print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_variant_ru.json --format1 json --target-lang ru --transliteration-standard \"Passport\" --transliterate-fields \"last_name,first_name,middle_name\" --name-fields \"last_name:Фамилия,first_name:Имя,middle_name:Отчество,email:Email\" --output-path data/output/transliterated_ru.json --verbose{Colors.ENDC}")
+    
+    print(f"\n{Colors.YELLOW}Пример 3: Сопоставление данных с учетом Email:{Colors.ENDC}")
+    print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/test_original_ru.json --format2 json --output-matches data/output/matches.json --output-path data/output/consolidated.json --threshold 0.7 --match-fields \"Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,Email:0.1:false:RATIO\" --verbose{Colors.ENDC}")
 
+
+# Добавляем функции для сохранения данных в JSON и CSV
+def save_to_json(data, filename):
+    """Сохраняет данные в JSON-файл"""
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def save_to_csv(data, filename):
+    """Сохраняет данные в CSV-файл"""
+    if not data:
+        return
+    
+    with open(filename, 'w', encoding='utf-8', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=data[0].keys())
+        writer.writeheader()
+        writer.writerows(data)
 
 if __name__ == "__main__":
     try:

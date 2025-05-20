@@ -127,14 +127,14 @@ class DataMatcher:
         if not matches:
             return
         with open(filename, 'w', newline='', encoding='utf-8') as f:
-            fieldnames = ['Запись 1', 'Запись 2', 'Совпадение']
+            fieldnames = ['Оригинал', 'Вариант', 'Схожесть']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             for match in matches:
                 writer.writerow({
-                    'Запись 1': ' '.join(match['Запись 1']),
-                    'Запись 2': ' '.join(match['Запись 2']),
-                    'Совпадение': f"{match['Совпадение'][0] / 100:.2f}"
+                    'Оригинал': str(match['Оригинал']),
+                    'Вариант': str(match['Вариант']),
+                    'Схожесть': f"{match['Схожесть']:.2f}"
                 })
 
     def save_consolidated_to_json(self, consolidated, filename):
@@ -441,13 +441,13 @@ class DataMatcher:
         # Консолидируем данные
         if matches:
             # Создаем множество сопоставленных записей для быстрого поиска
-            matched_ids1 = set(match["ID 1"] for match in matches)
-            matched_ids2 = set(match["ID 2"] for match in matches)
+            matched_ids1 = set(match["Оригинал"].get("id", "") for match in matches)
+            matched_ids2 = set(match["Вариант"].get("id", "") for match in matches)
             
             # Добавляем сопоставленные записи
             for match in matches:
-                record1 = next((r for r in data1 if r.get("id", "") == match["ID 1"]), None)
-                record2 = next((r for r in data2 if r.get("id", "") == match["ID 2"]), None)
+                record1 = match["Оригинал"]
+                record2 = match["Вариант"]
                 
                 if record1 and record2:
                     # Выбираем "лучшую" запись для консолидации
@@ -644,11 +644,9 @@ class DataMatcher:
                 record2_values = [best_match.get(field_config.field, "") for field_config in self.config.fields]
 
                 match_data = {
-                    "ID 1": record1.get("id", ""),
-                    "ID 2": best_match.get("id", ""),
-                    "Запись 1": record1_values,
-                    "Запись 2": record2_values,
-                    "Совпадение": (max_similarity, best_field_similarities)
+                    "Оригинал": record1,
+                    "Вариант": best_match,
+                    "Схожесть": max_similarity
                 }
 
                 block_matches.append(match_data)
