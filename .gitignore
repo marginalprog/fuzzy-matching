@@ -62,3 +62,13 @@ htmlcov/
 .nox/
 .hypothesis/
 .pytype/
+
+fuzzy_matching/cli/data/input/test_variant_ru.json
+
+fuzzy_matching/cli/data/input/test_original_ru.json
+
+fuzzy_matching/cli/data/output/consolidated.json
+
+fuzzy_matching/cli/data/output/matches.json
+
+fuzzy_matching/cli/data/output/transliterated_en.json

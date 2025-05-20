@@ -4,6 +4,7 @@ import json
 import csv
 import gender_guesser.detector as gender
 from enum import Enum
+from fuzzy_matching.utils.transliteration.transliteration_utils import transliterate_ru_to_en, PASSPORT_STANDARD
 # from rapidfuzz.distance import Levenshtein
 
 
@@ -280,7 +281,7 @@ class DataGenerator:
         # Возвращаем исходный язык
         self.language = original_language
         
-        result = translit.transliterate_ru_to_en(middle_name_ru, translit.PASSPORT_STANDARD)
+        result = transliterate_ru_to_en(middle_name_ru, PASSPORT_STANDARD)
         
         return result
 
@@ -293,13 +294,8 @@ class DataGenerator:
         :param gender: пол ('м' или 'ж')
         :return: кортеж (измененное имя, флаг полной замены имени)
         """
-        # Определяем вероятность изменения буквы или всего имени
-        rnd = random.random()
-        if rnd < self.double_char_probability:
-            return self.doubling_letter(name), False
-        elif rnd < self.double_char_probability + self.change_char_probability:
-            return self.changing_letter(name), False
-        elif rnd < self.double_char_probability + self.change_char_probability + self.change_name_probability:
+        # Проверка полной замены имени (имеет наивысший приоритет)
+        if random.random() < self.change_name_probability:
             # Полная замена имени через Faker или наши кастомные генераторы
             if part == 'first':
                 new_name = self.fake.first_name_male() if gender == 'м' else self.fake.first_name_female()
@@ -310,15 +306,32 @@ class DataGenerator:
             else:
                 new_name = name
             return new_name, True
+            
+        # Если имя не заменено полностью, применяем другие искажения
+        result = name
+        name_changed = False
+        
+        # Дублирование буквы
+        if random.random() < self.double_char_probability:
+            result = self.doubling_letter(result)
+            name_changed = True
+            
+        # Замена буквы
+        if random.random() < self.change_char_probability:
+            result = self.changing_letter(result)
+            name_changed = True
+            
         # Добавление суффикса
         if random.random() < self.suffix_probability:
             if self.language == Language.RUS:
                 russian_suffixes = ['ов', 'ев', 'ин', 'ский', 'цкий']
-                return name + random.choice(russian_suffixes), False
+                result += random.choice(russian_suffixes)
             else:
                 english_suffixes = ['son', 'man', 'er', 'ley', 'ton', 'ford', 'field', 'wood']
-                return name + random.choice(english_suffixes), False
-        return name, False
+                result += random.choice(english_suffixes)
+            name_changed = True
+            
+        return result, name_changed
 
     """Генерация списка записей"""
     def generate_clean_records_list(self, num_records, fields=None, use_patronymic_for_english=None):

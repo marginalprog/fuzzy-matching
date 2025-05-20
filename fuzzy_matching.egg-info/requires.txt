@@ -1,7 +1,0 @@
-rapidfuzz
-pandas
-prettytable
-faker
-gender_guesser
-matplotlib
-numpy

@@ -240,9 +240,9 @@ def demo_transliteration_matching():
     
     print("\nНайденные совпадения:")
     for match in matches:
-        print(f"Запись 1: {match['Запись 1']}")
-        print(f"Запись 2: {match['Запись 2']}")
-        print(f"Совпадение: {match['Совпадение'][0]:.2f}")
+        print(f"Оригинал: {match['Оригинал']}")
+        print(f"Вариант: {match['Вариант']}")
+        print(f"Схожесть: {match['Схожесть']:.2f}")
         print()
     
     print("\nКонсолидированные данные:")
@@ -312,17 +312,36 @@ def run_personal_data_demo():
     
     # Создаем таблицу для вывода результатов
     table = PrettyTable()
-    table.field_names = ["Оригинал", "Вариант", "Схожесть"]
+    table.field_names = ["Тип", "Фамилия", "Имя", "Отчество", "Email", "Схожесть"]
     
     for match in matches:
-        orig = match['record1']
-        var = match['record2']
-        similarity = match['similarity']
+        orig = match['Оригинал']
+        var = match['Вариант']
+        similarity = match['Схожесть']
         
-        # Форматируем данные для таблицы
-        orig_str = f"ФИО: {orig['Фамилия']} {orig['Имя']} {orig['Отчество']}\nEmail: {orig['Email']}"
-        var_str = f"ФИО: {var['Фамилия']} {var['Имя']} {var['Отчество']}\nEmail: {var['Email']}"
-        table.add_row([orig_str, var_str, f"{similarity:.2%}"])
+        # Добавляем строку для оригинала
+        table.add_row([
+            "Оригинал", 
+            orig['Фамилия'], 
+            orig['Имя'], 
+            orig['Отчество'], 
+            orig['Email'],
+            ""  # Пустая ячейка для схожести
+        ])
+        
+        # Добавляем строку для варианта
+        table.add_row([
+            "Вариант", 
+            var['Фамилия'], 
+            var['Имя'], 
+            var['Отчество'], 
+            var['Email'],
+            f"{similarity:.2%}"
+        ])
+        
+        # Добавляем пустую строку для разделения пар записей
+        if match != matches[-1]:
+            table.add_row([""] * 6)
     
     # Настраиваем стиль таблицы
     table.align = "l"
@@ -331,6 +350,23 @@ def run_personal_data_demo():
     
     print("\nРезультаты сопоставления:")
     print(table)
+    
+    # Выводим консолидированные данные
+    print(f"\n{Colors.CYAN}Консолидированные данные:{Colors.ENDC}")
+    cons_table = PrettyTable()
+    cons_table.field_names = ["id", "Фамилия", "Имя", "Отчество", "Email"]
+    
+    for record in consolidated:
+        cons_table.add_row([
+            record.get('id', ""),
+            record.get('Фамилия', ""),
+            record.get('Имя', ""),
+            record.get('Отчество', ""),
+            record.get('Email', "")
+        ])
+    
+    cons_table.align = "l"
+    print(cons_table)
     
     input(f"\n{Colors.GREEN}Нажмите Enter для продолжения...{Colors.ENDC}")
 
@@ -397,18 +433,36 @@ def run_business_data_demo():
     
     # Создаем таблицу для вывода результатов
     table = PrettyTable()
-    table.field_names = ["Оригинал", "Вариант", "Схожесть"]
+    table.field_names = ["Тип", "Название", "Юр. название", "ИНН", "КПП", "Схожесть"]
     
     for match in matches:
         orig = match['Оригинал']
         var = match['Вариант']
         similarity = match['Схожесть']
         
-        # Форматируем данные для таблицы
-        orig_str = f"Название: {orig['company_name']}\nЮр. название: {orig['legal_name']}\nИНН: {orig['inn']}\nКПП: {orig['kpp']}"
-        var_str = f"Название: {var['company_name']}\nЮр. название: {var['legal_name']}\nИНН: {var['inn']}\nКПП: {var['kpp']}"
+        # Добавляем строку для оригинала
+        table.add_row([
+            "Оригинал", 
+            orig['company_name'], 
+            orig['legal_name'], 
+            orig['inn'], 
+            orig['kpp'],
+            ""  # Пустая ячейка для схожести
+        ])
         
-        table.add_row([orig_str, var_str, f"{similarity:.2%}"])
+        # Добавляем строку для варианта
+        table.add_row([
+            "Вариант", 
+            var['company_name'], 
+            var['legal_name'], 
+            var['inn'], 
+            var['kpp'],
+            f"{similarity:.2%}"
+        ])
+        
+        # Добавляем пустую строку для разделения пар записей
+        if match != matches[-1]:
+            table.add_row([""] * 6)
     
     # Настраиваем стиль таблицы
     table.align = "l"
@@ -417,6 +471,23 @@ def run_business_data_demo():
     
     print("\nРезультаты сопоставления:")
     print(table)
+    
+    # Выводим консолидированные данные
+    print(f"\n{Colors.CYAN}Консолидированные данные:{Colors.ENDC}")
+    cons_table = PrettyTable()
+    cons_table.field_names = ["id", "Название", "Юр. название", "ИНН", "КПП"]
+    
+    for record in consolidated:
+        cons_table.add_row([
+            record.get('id', ""),
+            record.get('company_name', ""),
+            record.get('legal_name', ""),
+            record.get('inn', ""),
+            record.get('kpp', "")
+        ])
+    
+    cons_table.align = "l"
+    print(cons_table)
     
     input(f"\n{Colors.GREEN}Нажмите Enter для продолжения...{Colors.ENDC}")
 
@@ -483,18 +554,36 @@ def run_technical_data_demo():
     
     # Создаем таблицу для вывода результатов
     table = PrettyTable()
-    table.field_names = ["Оригинал", "Вариант", "Схожесть"]
+    table.field_names = ["Тип", "Серийный номер", "Код продукта", "Описание", "URL", "Схожесть"]
     
     for match in matches:
         orig = match['Оригинал']
         var = match['Вариант']
         similarity = match['Схожесть']
         
-        # Форматируем данные для таблицы
-        orig_str = f"SN: {orig['serial_number']}\nPC: {orig['product_code']}\nDesc: {orig['technical_description']}\nURL: {orig['url']}"
-        var_str = f"SN: {var['serial_number']}\nPC: {var['product_code']}\nDesc: {var['technical_description']}\nURL: {var['url']}"
+        # Добавляем строку для оригинала
+        table.add_row([
+            "Оригинал", 
+            orig['serial_number'], 
+            orig['product_code'], 
+            orig['technical_description'], 
+            orig['url'],
+            ""  # Пустая ячейка для схожести
+        ])
         
-        table.add_row([orig_str, var_str, f"{similarity:.2%}"])
+        # Добавляем строку для варианта
+        table.add_row([
+            "Вариант", 
+            var['serial_number'], 
+            var['product_code'], 
+            var['technical_description'], 
+            var['url'],
+            f"{similarity:.2%}"
+        ])
+        
+        # Добавляем пустую строку для разделения пар записей
+        if match != matches[-1]:
+            table.add_row([""] * 6)
     
     # Настраиваем стиль таблицы
     table.align = "l"
@@ -503,6 +592,23 @@ def run_technical_data_demo():
     
     print("\nРезультаты сопоставления:")
     print(table)
+    
+    # Выводим консолидированные данные
+    print(f"\n{Colors.CYAN}Консолидированные данные:{Colors.ENDC}")
+    cons_table = PrettyTable()
+    cons_table.field_names = ["id", "Серийный номер", "Код продукта", "Описание", "URL"]
+    
+    for record in consolidated:
+        cons_table.add_row([
+            record.get('id', ""),
+            record.get('serial_number', ""),
+            record.get('product_code', ""),
+            record.get('technical_description', ""),
+            record.get('url', "")
+        ])
+    
+    cons_table.align = "l"
+    print(cons_table)
     
     input(f"\n{Colors.GREEN}Нажмите Enter для продолжения...{Colors.ENDC}")
 
@@ -534,17 +640,21 @@ def run_transliteration_demo():
     
     # Создаем таблицу для вывода результатов
     table = PrettyTable()
-    table.field_names = ["Оригинал", "GOST", "Scientific", "Passport"]
+    table.field_names = ["№", "Фамилия", "Имя", "Отчество", "ГОСТ", "Научный", "Паспортный"]
     
-    for record in test_data:
-        orig_str = f"ФИО: {record['Фамилия']} {record['Имя']} {record['Отчество']}"
+    for i, record in enumerate(test_data):
+        # Получаем ФИО
+        last_name = record['Фамилия']
+        first_name = record['Имя']
+        middle_name = record['Отчество']
+        full_name = f"{last_name} {first_name} {middle_name}"
         
         # Транслитерация по разным стандартам
-        gost = transliterate_ru_to_en(f"{record['Фамилия']} {record['Имя']} {record['Отчество']}", GOST_STANDARD)
-        scientific = transliterate_ru_to_en(f"{record['Фамилия']} {record['Имя']} {record['Отчество']}", SCIENTIFIC_STANDARD)
-        passport = transliterate_ru_to_en(f"{record['Фамилия']} {record['Имя']} {record['Отчество']}", PASSPORT_STANDARD)
+        gost = transliterate_ru_to_en(full_name, GOST_STANDARD)
+        scientific = transliterate_ru_to_en(full_name, SCIENTIFIC_STANDARD)
+        passport = transliterate_ru_to_en(full_name, PASSPORT_STANDARD)
         
-        table.add_row([orig_str, gost, scientific, passport])
+        table.add_row([i+1, last_name, first_name, middle_name, gost, scientific, passport])
     
     # Настраиваем стиль таблицы
     table.align = "l"
@@ -563,20 +673,50 @@ def run_transliteration_demo():
         "Shcherbakov Evgeniy Aleksandrovich"
     ]
     
-    table = PrettyTable()
-    table.field_names = ["Английский", "Русский"]
+    # Создаем таблицу для обратной транслитерации
+    back_table = PrettyTable()
+    back_table.field_names = ["№", "Английский вариант", "Русский вариант"]
     
-    for name in english_names:
+    for i, name in enumerate(english_names):
         russian = transliterate_en_to_ru(name, PASSPORT_STANDARD)
-        table.add_row([name, russian])
+        back_table.add_row([i+1, name, russian])
     
     # Настраиваем стиль таблицы
-    table.align = "l"
-    table.border = True
-    table.header = True
+    back_table.align = "l"
+    back_table.border = True
+    back_table.header = True
     
     print("\nРезультаты обратной транслитерации:")
-    print(table)
+    print(back_table)
+    
+    # Демонстрация автоопределения языка
+    print(f"\n{Colors.YELLOW}Автоопределение языка текста:{Colors.ENDC}")
+    
+    mixed_names = [
+        "Иванов Иван Иванович",
+        "Ivanov Ivan Ivanovich",
+        "Смирнова Ольга Петровна",
+        "Smirnova Olga Petrovna",
+        "Щербаков-Иванов Алексей",
+        "Shcherbakov-Ivanov Alexey"
+    ]
+    
+    # Создаем таблицу для определения языка
+    lang_table = PrettyTable()
+    lang_table.field_names = ["№", "Текст", "Определенный язык"]
+    
+    for i, name in enumerate(mixed_names):
+        lang = detect_language(name)
+        lang_display = "Русский" if lang == "ru" else "Английский" if lang == "en" else "Неизвестный"
+        lang_table.add_row([i+1, name, lang_display])
+    
+    # Настраиваем стиль таблицы
+    lang_table.align = "l"
+    lang_table.border = True
+    lang_table.header = True
+    
+    print("\nРезультаты определения языка:")
+    print(lang_table)
     
     input(f"\n{Colors.GREEN}Нажмите Enter для продолжения...{Colors.ENDC}")
 
