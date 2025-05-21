@@ -35,7 +35,7 @@ def case1_migrate_english_to_russian():
         'first_name': 'Имя',
         'middle_name': 'Отчество',
         'position': 'Должность',
-        'email': 'Email'
+        'email': 'email'
     }
     
     # Транслитерируем данные на русский
@@ -46,7 +46,7 @@ def case1_migrate_english_to_russian():
             'Фамилия': translit.transliterate_en_to_ru(employee['Фамилия'], translit.PASSPORT_STANDARD),
             'Имя': translit.transliterate_en_to_ru(employee['Имя'], translit.PASSPORT_STANDARD),
             'Отчество': translit.transliterate_en_to_ru(employee['Отчество'], translit.PASSPORT_STANDARD),
-            'Email': employee['email']
+            'email': employee['email']
         }
         russian_data.append(ru_employee)
     

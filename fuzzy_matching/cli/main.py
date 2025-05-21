@@ -88,13 +88,13 @@ def main():
                 # Вызываем CLI для генерации тестовых данных
                 print(f"\n{Colors.BOLD}Запуск утилиты генерации тестовых данных...{Colors.ENDC}")
                 print(f"{Colors.YELLOW}Пример 1: Генерация данных на русском языке с русскими названиями полей:{Colors.ENDC}")
-                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields \"id,Фамилия,Имя,Отчество,Email\" --output-original data/input/test_original_ru.json --output-variant data/input/test_variant_ru.json --language ru --field-names-format ru --verbose{Colors.ENDC}")
+                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields \"id,Фамилия,Имя,Отчество,email\" --output-original data/input/test_original_ru.json --output-variant data/input/test_variant_ru.json --language ru --field-names-format ru --verbose{Colors.ENDC}")
                 
                 print(f"\n{Colors.YELLOW}Пример 2: Генерация данных на русском языке с английскими названиями полей:{Colors.ENDC}")
-                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields \"id,LastName,FirstName,MiddleName,Email\" --output-original data/input/test_original_en.json --output-variant data/input/test_variant_ru.json --language ru --field-names-format en --verbose{Colors.ENDC}")
+                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields \"id,LastName,FirstName,MiddleName,email\" --output-original data/input/test_original_en.json --output-variant data/input/test_variant_ru.json --language ru --field-names-format en --verbose{Colors.ENDC}")
                 
                 print(f"\n{Colors.YELLOW}Пример 3: Генерация данных на английском языке с английскими названиями полей:{Colors.ENDC}")
-                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields \"id,LastName,FirstName,MiddleName,Email\" --output-original data/input/test_original_en.json --output-variant data/input/test_variant_en.json --language en --field-names-format en --verbose{Colors.ENDC}")
+                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields \"id,LastName,FirstName,MiddleName,email\" --output-original data/input/test_original_en.json --output-variant data/input/test_variant_en.json --language en --field-names-format en --verbose{Colors.ENDC}")
                 
                 cmd = input(f"\n{Colors.YELLOW}Введите команду или нажмите Enter для возврата в меню: {Colors.ENDC}")
                 if cmd.strip():
@@ -136,22 +136,52 @@ def main():
                 print(f"  {Colors.GREEN}--change-domain-probability {Colors.CYAN}[0-1]{Colors.ENDC} - вероятность изменения домена в email (по умолчанию 0.3)")
                 print(f"  {Colors.GREEN}--double-number-probability {Colors.CYAN}[0-1]{Colors.ENDC} - вероятность дублирования цифры в телефоне (по умолчанию 0.3)")
                 print(f"  {Colors.GREEN}--suffix-probability {Colors.CYAN}[0-1]{Colors.ENDC}        - вероятность добавления суффикса к ФИО (по умолчанию 0.05)")
-                print(f"  {Colors.GREEN}--generate-fields {Colors.CYAN}[список]{Colors.ENDC}        - список полей для генерации (например: id,Фамилия,Имя,Отчество,Email)")
+                print(f"  {Colors.GREEN}--generate-fields {Colors.CYAN}[список]{Colors.ENDC}        - список полей для генерации (например: id,Фамилия,Имя,Отчество,email)")
                 print(f"  {Colors.GREEN}--language {Colors.CYAN}[ru|en]{Colors.ENDC}                - язык генерируемых данных (по умолчанию ru)")
                 print(f"  {Colors.GREEN}--field-names-format {Colors.CYAN}[ru|en]{Colors.ENDC}      - формат названий полей (по умолчанию соответствует языку)")
                 print(f"  {Colors.GREEN}--verbose{Colors.ENDC}                         - показывает расширенные сведения о выполнении программы")
-                                
+
+                print(f"\n{Colors.HEADER}{Colors.BOLD}=== Параметры транслитерации ==={Colors.ENDC}")
+                print(f"{Colors.BOLD}python -m fuzzy_matching.cli.process_data {Colors.GREEN}--mode transliterate{Colors.ENDC}")
+                print(f"  {Colors.GREEN}--input1 {Colors.CYAN}[путь]{Colors.ENDC}                   - путь к входному файлу")
+                print(f"  {Colors.GREEN}--format1 {Colors.CYAN}[json|csv]{Colors.ENDC}              - формат входного файла")
+                print(f"  {Colors.GREEN}--target-lang {Colors.CYAN}[ru|en]{Colors.ENDC}             - целевой язык транслитерации")
+                print(f"  {Colors.GREEN}--transliterate-fields {Colors.CYAN}[список]{Colors.ENDC}   - список полей для транслитерации")
+                print(f"  {Colors.GREEN}--transliteration-standard {Colors.CYAN}[стандарт]{Colors.ENDC} - стандарт транслитерации (GOST/Scientific/Passport)")
+                print(f"  {Colors.GREEN}--name-fields {Colors.CYAN}[список]{Colors.ENDC}            - маппинг полей для обратной транслитерации")
+                print(f"  {Colors.GREEN}--output-path {Colors.CYAN}[путь]{Colors.ENDC}              - путь для сохранения результата")
+                print(f"  {Colors.GREEN}--verbose{Colors.ENDC}                         - показывает расширенные сведения о выполнении программы")
+
+                print(f"\n{Colors.HEADER}{Colors.BOLD}=== Параметры сопоставления данных ==={Colors.ENDC}")
+                print(f"{Colors.BOLD}python -m fuzzy_matching.cli.process_data {Colors.GREEN}--mode match{Colors.ENDC}")
+                print(f"  {Colors.GREEN}--input1 {Colors.CYAN}[путь]{Colors.ENDC}                   - путь к первому входному файлу")
+                print(f"  {Colors.GREEN}--format1 {Colors.CYAN}[json|csv]{Colors.ENDC}              - формат первого входного файла")
+                print(f"  {Colors.GREEN}--input2 {Colors.CYAN}[путь]{Colors.ENDC}                   - путь ко второму входному файлу")
+                print(f"  {Colors.GREEN}--format2 {Colors.CYAN}[json|csv]{Colors.ENDC}              - формат второго входного файла")
+                print(f"  {Colors.GREEN}--match-fields {Colors.CYAN}[список]{Colors.ENDC}           - список полей для сопоставления в формате 'поле:вес:транслитерация:алгоритм'")
+                print(f"  {Colors.GREEN}--threshold {Colors.CYAN}[0-1]{Colors.ENDC}                 - порог совпадения (по умолчанию 0.7)")
+                print(f"  {Colors.GREEN}--output-matches {Colors.CYAN}[путь]{Colors.ENDC}           - путь для сохранения совпадений")
+                print(f"  {Colors.GREEN}--output-path {Colors.CYAN}[путь]{Colors.ENDC}              - путь для сохранения консолидированных данных")
+                print(f"  {Colors.GREEN}--verbose{Colors.ENDC}                         - показывает расширенные сведения о выполнении программы")
+
                 print(f"\n{Colors.YELLOW}Шаблоны команд:{Colors.ENDC}")
-                print(f"1. {Colors.RED}Генерация{Colors.ENDC} русских данных:")
-                print(f"   [{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_ru.json --output-variant data/input/variant_ru.json --output-format json --record-count 100 --generate-fields \"id,Фамилия,Имя,Отчество,Email\" --language ru --field-names-format ru --verbose{Colors.ENDC}]")
-                print(f"\n2. {Colors.RED}Генерация{Colors.ENDC} английских данных:")
-                print(f"   [{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_en.json --output-variant data/input/variant_en.json --output-format json --record-count 100 --generate-fields \"id,LastName,FirstName,MiddleName,Email\" --language en --field-names-format en --verbose{Colors.ENDC}]")
-                print(f"\n3. {Colors.BLUE}Транслитерация{Colors.ENDC} с русского на английский (поддерживаются стандарты {Colors.GREEN}[GOST||Scientific||Passport]{Colors.ENDC}):")
-                print(f"   [{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_original_ru.json --format1 json --target-lang en --transliterate-fields \"Фамилия,Имя,Отчество\" --transliteration-standard \"Passport\" --output-path data/output/transliterated_en.json --verbose{Colors.ENDC}]")
-                print(f"\n4. {Colors.BLUE}Транслитерация{Colors.ENDC} с английского на русский (поддерживается только стандарт {Colors.GREEN}[Passport]{Colors.ENDC}):")
-                print(f"   [{Colors.GREEN} python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_variant_ru.json --format1 json --target-lang ru --transliteration-standard \"Passport\" --transliterate-fields \"last_name,first_name,middle_name\" --name-fields \"last_name:Фамилия,first_name:Имя,middle_name:Отчество,email:Email\" --output-path data/output/transliterated_ru.json --verbose{Colors.ENDC}]")
-                print(f"\n5. {Colors.CYAN}Сопоставление{Colors.ENDC} данных:")
-                print(f"   [{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/test_original_ru.json --format2 json --output-matches data/output/matches.json --output-path data/output/consolidated.json --threshold 0.7 --match-fields \"Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,Email:0.1:false:RATIO\" --verbose{Colors.ENDC}]")
+                print(f"\n{Colors.RED}Генерация данных:{Colors.ENDC}")
+                print(f"1. Генерация русских данных:")
+                print(f"   [{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_ru.json --output-variant data/input/variant_ru.json --output-format json --record-count 100 --generate-fields \"id,Фамилия,Имя,Отчество,email\" --language ru --field-names-format ru --verbose{Colors.ENDC}]")
+                print(f"\n2. Генерация английских данных:")
+                print(f"   [{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_en.json --output-variant data/input/variant_en.json --output-format json --record-count 100 --generate-fields \"id,LastName,FirstName,MiddleName,email\" --language en --field-names-format en --verbose{Colors.ENDC}]")
+
+                print(f"\n{Colors.RED}Транслитерация:{Colors.ENDC}")
+                print(f"1. Транслитерация с русского на английский:")
+                print(f"   [{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/russian_data.json --format1 json --target-lang en --output-path data/output/english_data.json --transliterate-fields \"Фамилия,Имя,Отчество\" --transliteration-standard \"Passport\" --verbose{Colors.ENDC}]")
+                print(f"\n2. Обратная транслитерация с английского на русский:")
+                print(f"   [{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/english_data.json --format1 json --target-lang ru --transliteration-standard \"Passport\" --transliterate-fields \"last_name,first_name,middle_name\" --name-fields \"last_name:Фамилия,first_name:Имя,middle_name:Отчество,email:email\" --output-path data/output/russian_data.json --verbose{Colors.ENDC}]")
+
+                print(f"\n{Colors.RED}Сопоставление данных:{Colors.ENDC}")
+                print(f"1. Сопоставление персональных данных:")
+                print(f"   [{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/test_original_ru.json --format2 json --output-matches data/output/matches.json --output-path data/output/consolidated.json --threshold 0.7 --match-fields \"Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,email:0.1:false:RATIO\" --verbose{Colors.ENDC}]")
+                print(f"\n2. Сопоставление бизнес-данных:")
+                print(f"   [{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/companies_original.json --format1 json --input2 data/input/companies_variant.json --format2 json --output-matches data/output/company_matches.json --output-path data/output/companies_consolidated.json --threshold 0.7 --match-fields \"company_name:0.4:true:TOKEN_SET,legal_name:0.3:true:TOKEN_SORT,inn:0.2:false:RATIO,kpp:0.1:false:RATIO\" --verbose{Colors.ENDC}]")
                 
                 input(f"\n{Colors.YELLOW}Нажмите Enter для возврата в меню...{Colors.ENDC}")
             
@@ -215,7 +245,7 @@ def show_usage_examples():
     """Показывает примеры использования"""
     print(f"\n{Colors.CYAN}=== Примеры использования ==={Colors.ENDC}")
     print(f"\n{Colors.YELLOW}1. Сопоставление персональных данных:{Colors.ENDC}")
-    print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/test_original_ru.json --format2 json --output-matches data/output/matches.json --output-path data/output/consolidated.json --threshold 0.7 --match-fields \"Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,Email:0.1:false:RATIO\" --verbose{Colors.ENDC}")
+    print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/test_original_ru.json --format2 json --output-matches data/output/matches.json --output-path data/output/consolidated.json --threshold 0.7 --match-fields \"Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,email:0.1:false:RATIO\" --verbose{Colors.ENDC}")
     
     print(f"\n{Colors.YELLOW}2. Сопоставление бизнес-данных:{Colors.ENDC}")
     print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/companies_original.json --format1 json --input2 data/input/companies_variant.json --format2 json --output-matches data/output/company_matches.json --output-path data/output/companies_consolidated.json --threshold 0.7 --match-fields \"company_name:0.4:true:TOKEN_SET,legal_name:0.3:true:TOKEN_SORT,inn:0.2:false:RATIO,kpp:0.1:false:RATIO\" --verbose{Colors.ENDC}")

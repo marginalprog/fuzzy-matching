@@ -260,14 +260,14 @@ def run_personal_data_demo():
             'Фамилия': 'Иванов',
             'Имя': 'Иван',
             'Отчество': 'Иванович',
-            'Email': 'ivanov@example.com'
+            'email': 'ivanov@example.com'
         },
         {
             'id': '2',
             'Фамилия': 'Петров-Сидоров',
             'Имя': 'Петр',
             'Отчество': 'Петрович',
-            'Email': 'petrov@example.com'
+            'email': 'petrov@example.com'
         }
     ]
     
@@ -277,14 +277,14 @@ def run_personal_data_demo():
             'Фамилия': 'Иванов',
             'Имя': 'Ваня',  # Уменьшительная форма
             'Отчество': 'Иванович',
-            'Email': 'ivanov@example.com'
+            'email': 'ivanov@example.com'
         },
         {
             'id': '2',
             'Фамилия': 'Сидоров-Петров',  # Изменен порядок частей фамилии
             'Имя': 'Петр',
             'Отчество': 'Петрович',
-            'Email': 'petrov@example.com'
+            'email': 'petrov@example.com'
         }
     ]
     
@@ -294,7 +294,7 @@ def run_personal_data_demo():
             MatchFieldConfig(field='Фамилия', weight=0.4, transliterate=False, fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SORT),
             MatchFieldConfig(field='Имя', weight=0.3, transliterate=False, fuzzy_algorithm=FuzzyAlgorithm.PARTIAL_RATIO),
             MatchFieldConfig(field='Отчество', weight=0.2, transliterate=False, fuzzy_algorithm=FuzzyAlgorithm.RATIO),
-            MatchFieldConfig(field='Email', weight=0.1, transliterate=False, fuzzy_algorithm=FuzzyAlgorithm.RATIO)
+            MatchFieldConfig(field='email', weight=0.1, transliterate=False, fuzzy_algorithm=FuzzyAlgorithm.RATIO)
         ],
         threshold=0.7,
         block_field='id'
@@ -312,7 +312,7 @@ def run_personal_data_demo():
     
     # Создаем таблицу для вывода результатов
     table = PrettyTable()
-    table.field_names = ["Тип", "Фамилия", "Имя", "Отчество", "Email", "Схожесть"]
+    table.field_names = ["Тип", "Фамилия", "Имя", "Отчество", "email", "Схожесть"]
     
     for match in matches:
         orig = match['Оригинал']
@@ -325,7 +325,7 @@ def run_personal_data_demo():
             orig['Фамилия'], 
             orig['Имя'], 
             orig['Отчество'], 
-            orig['Email'],
+            orig['email'],
             ""  # Пустая ячейка для схожести
         ])
         
@@ -335,7 +335,7 @@ def run_personal_data_demo():
             var['Фамилия'], 
             var['Имя'], 
             var['Отчество'], 
-            var['Email'],
+            var['email'],
             f"{similarity:.2%}"
         ])
         
@@ -354,7 +354,7 @@ def run_personal_data_demo():
     # Выводим консолидированные данные
     print(f"\n{Colors.CYAN}Консолидированные данные:{Colors.ENDC}")
     cons_table = PrettyTable()
-    cons_table.field_names = ["id", "Фамилия", "Имя", "Отчество", "Email"]
+    cons_table.field_names = ["id", "Фамилия", "Имя", "Отчество", "email"]
     
     for record in consolidated:
         cons_table.add_row([
@@ -362,7 +362,7 @@ def run_personal_data_demo():
             record.get('Фамилия', ""),
             record.get('Имя', ""),
             record.get('Отчество', ""),
-            record.get('Email', "")
+            record.get('email', "")
         ])
     
     cons_table.align = "l"

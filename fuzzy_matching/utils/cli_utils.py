@@ -18,8 +18,7 @@ def generate_test_data(probabilities, gen_fields, count=100, language='ru', fiel
         - change_domain_probability: вероятность изменения домена в email (0.0-1.0)
         - double_number_probability: вероятность дублирования цифры в телефоне (0.0-1.0)
         - suffix_probability: вероятность добавления суффикса к ФИО (0.0-1.0)
-    :param gen_fields: список полей для генерации в формате [{'name': 'Фамилия', 'type': 'last_name'}, ...]
-        Поля должны соответствовать формату названий полей (русскому или английскому)
+    :param gen_fields: список полей для генерации в формате ['last_name', 'first_name', ...]
     :param count: количество записей для генерации (по умолчанию 100)
     :param language: язык генерируемых данных ('ru' или 'en')
         - ru: русский язык (имена, фамилии и отчества на русском)
@@ -44,23 +43,18 @@ def generate_test_data(probabilities, gen_fields, count=100, language='ru', fiel
     else:
         dg.FIELD_NAMES = dg.FIELD_NAMES_EN
     
-    # Преобразуем поля из формата [{'name': 'Фамилия', 'type': 'last_name'}] 
+    # Преобразуем поля из формата ['last_name', 'first_name', ...] 
     # в формат ['Фамилия', 'Имя', ...]
-    field_names = [field['name'] for field in gen_fields if 'name' in field]
-    
-    # Проверяем, содержатся ли указанные поля в нашем генераторе
-    valid_fields = []
-    for field_name in field_names:
-        if field_name == 'id':
-            valid_fields.append('id')  # ID всегда добавляется
+    field_names = []
+    for field in gen_fields:
+        if field == 'id':
+            field_names.append('id')
         else:
-            # Проверяем, есть ли поле в значениях FIELD_NAMES
-            for field_value in dg.FIELD_NAMES.values():
-                if field_name == field_value:
-                    valid_fields.append(field_name)
-                    break
+            field_name = dg.FIELD_NAMES.get(field, field)
+            if field_name:
+                field_names.append(field_name)
     
-    original_list, variant_list = dg.generate_records_pair(count, fields=valid_fields)
+    original_list, variant_list = dg.generate_records_pair(count, fields=field_names)
     return original_list, variant_list
 
 
@@ -75,8 +69,7 @@ def generate_and_save_test_data(probabilities, gen_fields, count=100, file_forma
         - change_domain_probability: вероятность изменения домена в email (0.0-1.0)
         - double_number_probability: вероятность дублирования цифры в телефоне (0.0-1.0)
         - suffix_probability: вероятность добавления суффикса к ФИО (0.0-1.0)
-    :param gen_fields: список полей для генерации в формате [{'name': 'Фамилия', 'type': 'last_name'}, ...]
-        Поля должны соответствовать формату названий полей (русскому или английскому)
+    :param gen_fields: список полей для генерации в формате ['last_name', 'first_name', ...]
     :param count: количество записей для генерации (по умолчанию 100)
     :param file_format: формат файлов для сохранения ('json' или 'csv')
     :param original_file: имя файла для оригинальных данных (если None, используется 'original_data_list.{extension}')
@@ -105,33 +98,22 @@ def generate_and_save_test_data(probabilities, gen_fields, count=100, file_forma
     else:
         dg.FIELD_NAMES = dg.FIELD_NAMES_EN
     
-    # Преобразуем поля из формата [{'name': 'Фамилия', 'type': 'last_name'}, ...]
+    # Преобразуем поля из формата ['last_name', 'first_name', ...] 
     # в формат ['Фамилия', 'Имя', ...]
-    field_names = [field['name'] for field in gen_fields if 'name' in field]
-    
-    if verbose:
-        print(f"Запрошенные поля: {field_names}")
-        print(f"Доступные поля в генераторе: {dg.FIELD_NAMES}")
-        print(f"Значения полей: {list(dg.FIELD_NAMES.values())}")
-    
-    # Проверяем, содержатся ли указанные поля в нашем генераторе
-    valid_fields = []
-    for field_name in field_names:
-        if field_name == 'id':
-            valid_fields.append('id')  # ID всегда добавляется
+    field_names = []
+    for field in gen_fields:
+        if field == 'id':
+            field_names.append('id')
         else:
-            # Проверяем, есть ли поле в значениях FIELD_NAMES
-            for field_value in dg.FIELD_NAMES.values():
-                if verbose:
-                    print(f"Сравниваем '{field_name}' с '{field_value}': {field_name == field_value}")
-                if field_name == field_value:
-                    valid_fields.append(field_name)
-                    break
+            field_name = dg.FIELD_NAMES.get(field, field)
+            if field_name:
+                field_names.append(field_name)
     
     if verbose:
-        print(f"Валидные поля для генерации: {', '.join(valid_fields)}")
+        print(f"Запрошенные поля: {gen_fields}")
+        print(f"Поля для генерации: {field_names}")
     
-    original_list, variant_list = dg.generate_records_pair(count, fields=valid_fields)
+    original_list, variant_list = dg.generate_records_pair(count, fields=field_names)
 
     # Если имена файлов не указаны, используем стандартные имена
     original_file = original_file or f'original_data_list.{file_format}'

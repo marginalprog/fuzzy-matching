@@ -3,35 +3,35 @@
         "Фамилия": "Осипов",
         "Имя": "Рюрик",
         "Отчество": "Андреевич",
-        "Email": "marina_44@example.org",
+        "email": "marina_44@example.org",
         "id": "record_1"
     },
     {
         "Фамилия": "Степанов",
         "Имя": "Константин",
         "Отчество": "Вячеславович",
-        "Email": "ostaptihonov@example.com",
+        "email": "ostaptihonov@example.com",
         "id": "record_2"
     },
     {
         "Фамилия": "Тимофеев",
         "Имя": "Велимир",
         "Отчество": "Ильич",
-        "Email": "izmailvlasov@example.net",
+        "email": "izmailvlasov@example.net",
         "id": "record_3"
     },
     {
         "Фамилия": "Рыбакова",
         "Имя": "Фёкла",
         "Отчество": "Георгиевна",
-        "Email": "kuzmindobroslav@example.org",
+        "email": "kuzmindobroslav@example.org",
         "id": "record_4"
     },
     {
         "Фамилия": "Анисимова",
         "Имя": "Ия",
         "Отчество": "Фёдоровна",
-        "Email": "ponomarevvsemil@example.org",
+        "email": "ponomarevvsemil@example.org",
         "id": "record_5"
     }
 ]

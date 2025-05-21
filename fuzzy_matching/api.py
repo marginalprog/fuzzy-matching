@@ -303,13 +303,14 @@ def generate_test_datasets(
     }
     
     # Определяем поля для генерации
-    gen_fields = [
-        {'name': 'id', 'type': 'id'},
-        {'name': 'Фамилия', 'type': 'last_name'},
-        {'name': 'Имя', 'type': 'first_name'},
-        {'name': 'Отчество', 'type': 'middle_name'},
-        {'name': 'Email', 'type': 'email'},
-        {'name': 'Телефон', 'type': 'phone'}
+    default_fields = [
+        'id',
+        'Фамилия',
+        'Имя',
+        'Отчество',
+        'email',
+        'Телефон',
+        'Пол'
     ]
     
     if save_to_file:

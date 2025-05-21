@@ -44,7 +44,7 @@ def generate_person_data(count=5):
             "Имя": first_names[i % 5 + gender_idx * 5],
             "Отчество": middle_names[i % 5 + gender_idx * 5],
             "Телефон": f"+7 {random.randint(900, 999)} {random.randint(100, 999)}-{random.randint(10, 99)}-{random.randint(10, 99)}",
-            "Email": f"user{i+1}@example.com",
+            "email": f"user{i+1}@example.com",
             "Пол": "м" if gender_idx == 0 else "ж"
         }
         records.append(record)
@@ -115,11 +115,11 @@ def create_distorted_data(records):
         
         # В 20% случаев искажаем email
         if random.random() < 0.2:
-            if "Email" in record:
-                email = record["Email"]
+            if "email" in record:
+                email = record["email"]
                 username, domain = email.split('@')
                 distorted_username = apply_slight_distortion(username)
-                distorted_record["Email"] = f"{distorted_username}@{domain}"
+                distorted_record["email"] = f"{distorted_username}@{domain}"
         
         distorted_records.append(distorted_record)
     

@@ -7,7 +7,7 @@
 
 1. Сопоставление данных и поиск похожих записей:
 ```
-python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/test_original_ru.json --format2 json --output-matches data/output/matches.json --output-path data/output/consolidated.json --threshold 0.7 --match-fields "Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,Email:0.1:false:RATIO" --verbose
+python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/test_original_ru.json --format2 json --output-matches data/output/matches.json --output-path data/output/consolidated.json --threshold 0.7 --match-fields "Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,email:0.1:false:RATIO" --verbose
 ```
 
 2. Транслитерация данных между русским и английским языками:
@@ -17,12 +17,12 @@ python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/inp
 
 3. Генерация тестовых данных на русском языке с русскими названиями полей:
 ```
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_ru.json --output-variant data/input/variant_ru.json --output-format json --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,Email" --language ru --field-names-format ru --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_ru.json --output-variant data/input/variant_ru.json --output-format json --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,email" --language ru --field-names-format ru --verbose
 ```
 
 4. Генерация тестовых данных на английском языке с английскими названиями полей:
 ```
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_en.json --output-variant data/input/variant_en.json --output-format json --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,Email" --language en --field-names-format en --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_en.json --output-variant data/input/variant_en.json --output-format json --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,email" --language en --field-names-format en --verbose
 ```
 
 Описание основных параметров:
@@ -72,6 +72,7 @@ from fuzzy_matching.core.match_config_classes import (
 )
 from fuzzy_matching.core.data_matcher import DataMatcher
 from fuzzy_matching.utils.cli_utils import generate_and_save_test_data
+from fuzzy_matching.utils.data_generator import DataGenerator, Language
 
 # Определение путей по умолчанию для файлов данных и результатов
 DATA_INPUT_DIR = 'data/input'
@@ -101,7 +102,7 @@ def parse_name_fields(fields_str):
             'Фамилия': 'Фамилия',
             'Имя': 'Имя',
             'Отчество': 'Отчество',
-            'Email': 'Email',
+            'email': 'email',
             'email': 'email',
             'Телефон': 'Телефон'
         }
@@ -216,7 +217,7 @@ def main():
     parser.add_argument('--suffix-probability', type=float, default=0.1,
                       help="Вероятность добавления суффикса к ФИО (от 0 до 1, по умолчанию 0.1)")
     parser.add_argument('--generate-fields',
-                      help="Список полей для генерации, разделенных запятыми (например: id,Фамилия,Имя,Отчество,Email для русского или id,LastName,FirstName,MiddleName,Email для английского)")
+                      help="Список полей для генерации, разделенных запятыми (например: id,Фамилия,Имя,Отчество,email для русского или id,LastName,FirstName,MiddleName,email для английского)")
     parser.add_argument('--language', choices=['ru', 'en'], default='ru',
                       help="Язык генерируемых данных (ru - русский, en - английский, по умолчанию ru)")
     parser.add_argument('--field-names-format', choices=['ru', 'en'], default=None,
@@ -243,7 +244,7 @@ def main():
 - Имена: PARTIAL_RATIO
 - Фамилии: TOKEN_SORT
 - Адреса: TOKEN_SET
-- Email/телефоны: RATIO
+- email/телефоны: RATIO
 
 Бизнес-данные:
 - Названия компаний: TOKEN_SET
@@ -285,45 +286,70 @@ def main():
             'suffix_probability': args.suffix_probability
         }
         
+        # Создаем генератор с указанными параметрами
+        lang = Language.RUS if args.language.lower() == 'ru' else Language.ENG
+        dg = DataGenerator(language=lang, probabilities=probabilities)
+        
+        # Если формат названий полей не указан, используем язык
+        field_names_format = args.field_names_format or args.language
+        
+        # Устанавливаем формат названий полей
+        if field_names_format.lower() == 'ru':
+            dg.FIELD_NAMES = dg.FIELD_NAMES_RU
+        else:
+            dg.FIELD_NAMES = dg.FIELD_NAMES_EN
+        
         # Определяем поля для генерации
         default_fields = [
-            {'name': 'id', 'type': 'id'},
-            {'name': 'Фамилия', 'type': 'last_name'},
-            {'name': 'Имя', 'type': 'first_name'},
-            {'name': 'Отчество', 'type': 'middle_name'},
-            {'name': 'Email', 'type': 'email'},
-            {'name': 'Телефон', 'type': 'phone'},
-            {'name': 'Пол', 'type': 'gender'}
+            'id',
+            'last_name',
+            'first_name',
+            'middle_name',
+            'email',
+            'phone',
+            'gender'
         ]
         
-        # Если указаны конкретные поля, фильтруем список полей
+        # Если указаны конкретные поля, используем их
         gen_fields = default_fields
         if args.generate_fields:
             selected_fields = [field.strip() for field in args.generate_fields.split(',')]
             
-            # Создаем поля с правильными именами в зависимости от формата названий полей
-            gen_fields = []
-            for field_name in selected_fields:
-                # Приводим поле email к стандартному виду для избежания проблем с регистром
-                field_type = field_name.lower()
-                if field_type == 'email':
-                    field_name = 'Email'  # Стандартизируем имя поля Email
-                
-                gen_fields.append({'name': field_name, 'type': field_type})
-            
             # Добавляем id, если его нет, так как он необходим для работы
-            if not any(field['name'] == 'id' for field in gen_fields):
-                gen_fields.insert(0, {'name': 'id', 'type': 'id'})
+            if 'id' not in selected_fields:
+                selected_fields.insert(0, 'id')
+            
+            # Преобразуем названия полей в их типы
+            field_types = []
+            for field in selected_fields:
+                if field == 'id':
+                    field_types.append('id')
+                elif field == 'email':
+                    field_types.append('email')
+                else:
+                    # Ищем тип поля в словарях FIELD_NAMES
+                    field_type = None
+                    if field_names_format.lower() == 'ru':
+                        for key, value in dg.FIELD_NAMES_RU.items():
+                            if value == field:
+                                field_type = key
+                                break
+                    else:
+                        for key, value in dg.FIELD_NAMES_EN.items():
+                            if value == field:
+                                field_type = key
+                                break
+                    if field_type:
+                        field_types.append(field_type)
+            
+            gen_fields = field_types
             
             if args.verbose:
-                print(f"{Colors.GREEN}Генерация полей: {', '.join(field['name'] for field in gen_fields)}{Colors.ENDC}")
+                print(f"{Colors.GREEN}Генерация полей: {', '.join(selected_fields)}{Colors.ENDC}")
         
         # Используем пути по умолчанию, если пути не указаны
         output_original = args.output_original or os.path.join(DATA_INPUT_DIR, f'original.{args.output_format}')
         output_variant = args.output_variant or os.path.join(DATA_INPUT_DIR, f'variant.{args.output_format}')
-        
-        # Определяем формат названий полей (если не указан, используем язык)
-        field_names_format = args.field_names_format or args.language
         
         # Генерируем данные
         original_list, variant_list = generate_and_save_test_data(
@@ -351,26 +377,23 @@ def main():
         # Создаем таблицу
         table = PrettyTable()
         
-        # Получаем все уникальные ключи из обоих наборов
-        all_keys = set()
-        for record in original_list[:5] + variant_list[:5]:
-            all_keys.update(record.keys())
-        
         # Добавляем столбец для указания типа записи (оригинал/искаженная)
-        field_names = ["Тип"] + sorted(all_keys)
+        field_names = ["Тип"] + [dg.FIELD_NAMES.get(field, field) for field in gen_fields]
         table.field_names = field_names
         
         # Добавляем данные в таблицу
         for i in range(min(5, len(original_list))):
             orig_row = ["Оригинал"]
-            for key in field_names[1:]:  # Пропускаем первый столбец "Тип"
-                orig_row.append(original_list[i].get(key, ""))
+            for field in gen_fields:
+                field_name = dg.FIELD_NAMES.get(field, field)
+                orig_row.append(original_list[i].get(field_name, ""))
             table.add_row(orig_row)
             
             if i < len(variant_list):
                 var_row = ["Искаженная"]
-                for key in field_names[1:]:  # Пропускаем первый столбец "Тип"
-                    var_row.append(variant_list[i].get(key, ""))
+                for field in gen_fields:
+                    field_name = dg.FIELD_NAMES.get(field, field)
+                    var_row.append(variant_list[i].get(field_name, ""))
                 table.add_row(var_row)
                 
                 # Добавляем пустую строку для разделения пар записей
@@ -612,8 +635,8 @@ def main():
                 # Определяем поля для таблицы на основе полей сопоставления
                 field_names = [f.field for f in config.fields]
                 
-                # Стандартизируем имя поля Email
-                field_names = ['Email' if f.lower() == 'email' else f for f in field_names]
+                # Стандартизируем имя поля email
+                field_names = ['email' if f.lower() == 'email' else f for f in field_names]
                 
                 match_table.field_names = ["Тип"] + field_names + ["Схожесть"]
                 
@@ -628,7 +651,7 @@ def main():
                     for field in field_names:
                         # Проверяем оба варианта написания email
                         if field.lower() == 'email':
-                            value = orig.get('Email', orig.get('email', ""))
+                            value = orig.get('email', orig.get('email', ""))
                         else:
                             value = orig.get(field, "")
                         orig_row.append(value)
@@ -640,7 +663,7 @@ def main():
                     for field in field_names:
                         # Проверяем оба варианта написания email
                         if field.lower() == 'email':
-                            value = var.get('Email', var.get('email', ""))
+                            value = var.get('email', var.get('email', ""))
                         else:
                             value = var.get(field, "")
                         var_row.append(value)
@@ -669,8 +692,8 @@ def main():
                 # Определяем поля для таблицы на основе полей сопоставления
                 field_names = [f.field for f in config.fields]
                 
-                # Стандартизируем имя поля Email
-                field_names = ['Email' if f.lower() == 'email' else f for f in field_names]
+                # Стандартизируем имя поля email
+                field_names = ['email' if f.lower() == 'email' else f for f in field_names]
                 
                 cons_table.field_names = field_names
                 
@@ -680,7 +703,7 @@ def main():
                     for field in field_names:
                         # Проверяем оба варианта написания email
                         if field.lower() == 'email':
-                            value = record.get('Email', record.get('email', ""))
+                            value = record.get('email', record.get('email', ""))
                         else:
                             value = record.get(field, "")
                         row.append(value)
