@@ -368,7 +368,7 @@ def run_personal_data_demo():
     cons_table.align = "l"
     print(cons_table)
     
-    input(f"\n{Colors.GREEN}Нажмите Enter для продолжения...{Colors.ENDC}")
+    input(f"\n{Colors.GREEN}Нажмите {Colors.BOLD}Enter{Colors.ENDC}{Colors.YELLOW} для продолжения...{Colors.ENDC}")
 
 def run_business_data_demo():
     """Запускает демо сопоставления бизнес-данных"""
@@ -489,7 +489,7 @@ def run_business_data_demo():
     cons_table.align = "l"
     print(cons_table)
     
-    input(f"\n{Colors.GREEN}Нажмите Enter для продолжения...{Colors.ENDC}")
+    input(f"\n{Colors.GREEN}Нажмите {Colors.BOLD}Enter{Colors.ENDC}{Colors.YELLOW} для продолжения...{Colors.ENDC}")
 
 def run_technical_data_demo():
     """Запускает демо сопоставления технических данных"""
@@ -610,7 +610,7 @@ def run_technical_data_demo():
     cons_table.align = "l"
     print(cons_table)
     
-    input(f"\n{Colors.GREEN}Нажмите Enter для продолжения...{Colors.ENDC}")
+    input(f"\n{Colors.GREEN}Нажмите {Colors.BOLD}Enter{Colors.ENDC}{Colors.YELLOW} для продолжения...{Colors.ENDC}")
 
 def run_transliteration_demo():
     """Запускает демо транслитерации"""
@@ -718,7 +718,7 @@ def run_transliteration_demo():
     print("\nРезультаты определения языка:")
     print(lang_table)
     
-    input(f"\n{Colors.GREEN}Нажмите Enter для продолжения...{Colors.ENDC}")
+    input(f"\n{Colors.GREEN}Нажмите {Colors.BOLD}Enter{Colors.ENDC}{Colors.YELLOW} для продолжения...{Colors.ENDC}")
 
 def run_example(example_name):
     """

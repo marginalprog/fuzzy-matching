@@ -7,23 +7,31 @@
 
 1. Сопоставление данных и поиск похожих записей:
 ```
-python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.json --format1 json --input2 data/input/test_original_ru.json --format2 json --output-matches data/output/matches.json --output-path data/output/consolidated.json --threshold 0.7 --match-fields "Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,email:0.1:false:RATIO" --verbose
+python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/test_ru_ru_original.json --format1 json --input2 data/input/test_ru_ru_variant.json --format2 json --output-matches data/output/matches.json --output-path data/output/consolidated.json --threshold 0.7 --match-fields "Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:true:PARTIAL_RATIO,Отчество:0.2:true:RATIO,email:0.1:false:RATIO" --transliteration-standard "Passport" --verbose
 ```
 
 2. Транслитерация данных между русским и английским языками:
 ```
-python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/russian_data.json --format1 json --target-lang en --output-path data/output/english_data.json --transliterate-fields "Фамилия,Имя,Отчество" --transliteration-standard "Passport" --verbose
+python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_ru_ru_original.json --format1 json --target-lang en --output-path data/output/transliterated_en.json --transliterate-fields "Фамилия,Имя,Отчество" --transliteration-standard "Passport" --verbose
 ```
 
 3. Генерация тестовых данных на русском языке с русскими названиями полей:
 ```
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_ru.json --output-variant data/input/variant_ru.json --output-format json --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,email" --language ru --field-names-format ru --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,email" --language ru --field-names-format ru --verbose
 ```
+# Результат: test_ru_ru_original.json и test_ru_ru_variant.json
 
-4. Генерация тестовых данных на английском языке с английскими названиями полей:
+4. Генерация тестовых данных на русском языке с английскими названиями полей:
 ```
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input/original_en.json --output-variant data/input/variant_en.json --output-format json --record-count 100 --double-char-probability 0.1 --change-char-probability 0.05 --change-name-probability 0.1 --change-domain-probability 0.3 --double-number-probability 0.3 --suffix-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,email" --language en --field-names-format en --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language ru --field-names-format en --verbose
 ```
+# Результат: test_en_ru_original.json и test_en_ru_variant.json
+
+5. Генерация тестовых данных на английском языке с английскими названиями полей:
+```
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language en --field-names-format en --verbose
+```
+# Результат: test_en_en_original.json и test_en_en_variant.json
 
 Описание основных параметров:
   --mode: режим работы (match, transliterate или generate)
@@ -31,10 +39,12 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
   --format1, --format2: форматы входных файлов (csv или json)
   --output-matches: путь для сохранения найденных совпадений
   --output-path: путь для сохранения результатов (транслитерированных или консолидированных данных)
+  --output-original: путь для сохранения оригинальных сгенерированных данных
+  --output-variant: путь для сохранения искаженных сгенерированных данных
   --threshold: порог схожести (от 0 до 1)
   --match-fields: конфигурация полей для сопоставления
   --target-lang: целевой язык для транслитерации (ru или en)
-  --transliteration-standard: стандарт транслитерации ("ГОСТ 7.79-2000", "Научная" или "Паспортная")
+  --transliteration-standard: стандарт транслитерации ("GOST", "Scientific" или "Passport")
   --generate-fields: список полей для генерации в режиме generate
   --language: язык генерируемых данных (ru или en)
   --field-names-format: формат названий полей (ru или en)
@@ -347,10 +357,29 @@ def main():
             if args.verbose:
                 print(f"{Colors.GREEN}Генерация полей: {', '.join(selected_fields)}{Colors.ENDC}")
         
-        # Используем пути по умолчанию, если пути не указаны
-        output_original = args.output_original or os.path.join(DATA_INPUT_DIR, f'original.{args.output_format}')
-        output_variant = args.output_variant or os.path.join(DATA_INPUT_DIR, f'variant.{args.output_format}')
-        
+        # Определяем пути по умолчанию, если пути не указаны
+        field_format = field_names_format.lower()
+        data_lang = args.language.lower()
+
+        # Формируем имена файлов по шаблону
+        original_filename = f'test_{field_format}_{data_lang}_original.{args.output_format}'
+        variant_filename = f'test_{field_format}_{data_lang}_variant.{args.output_format}'
+
+        # Если указаны пути к директориям, используем их
+        if args.output_original:
+            output_original = os.path.join(args.output_original, original_filename)
+        else:
+            output_original = os.path.join(DATA_INPUT_DIR, original_filename)
+
+        if args.output_variant:
+            output_variant = os.path.join(args.output_variant, variant_filename)
+        else:
+            output_variant = os.path.join(DATA_INPUT_DIR, variant_filename)
+
+        # Создаем директории, если они не существуют
+        os.makedirs(os.path.dirname(output_original), exist_ok=True)
+        os.makedirs(os.path.dirname(output_variant), exist_ok=True)
+
         # Генерируем данные
         original_list, variant_list = generate_and_save_test_data(
             probabilities=probabilities,
@@ -410,16 +439,20 @@ def main():
         
         # Сохраняем результаты
         if args.output_format == 'json':
-            save_to_json(original_list, args.output_original)
-            save_to_json(variant_list, args.output_variant)
+            if output_original:
+                save_to_json(original_list, output_original)
+            if output_variant:
+                save_to_json(variant_list, output_variant)
         else:
-            save_to_csv(original_list, args.output_original)
-            save_to_csv(variant_list, args.output_variant)
+            if output_original:
+                save_to_csv(original_list, output_original)
+            if output_variant:
+                save_to_csv(variant_list, output_variant)
         
         if args.verbose:
             print(f"{Colors.GREEN}Данные успешно сохранены:{Colors.ENDC}")
-            print(f"{Colors.CYAN}- Оригинальные данные: {Colors.YELLOW}{args.output_original}{Colors.ENDC}")
-            print(f"{Colors.CYAN}- Вариантные данные:  {Colors.YELLOW}{args.output_variant}{Colors.ENDC}")
+            print(f"{Colors.CYAN}- Оригинальные данные: {Colors.YELLOW}{output_original}{Colors.ENDC}")
+            print(f"{Colors.CYAN}- Вариантные данные:  {Colors.YELLOW}{output_variant}{Colors.ENDC}")
 
         return
     

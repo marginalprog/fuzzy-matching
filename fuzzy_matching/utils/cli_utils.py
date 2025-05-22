@@ -72,8 +72,8 @@ def generate_and_save_test_data(probabilities, gen_fields, count=100, file_forma
     :param gen_fields: список полей для генерации в формате ['last_name', 'first_name', ...]
     :param count: количество записей для генерации (по умолчанию 100)
     :param file_format: формат файлов для сохранения ('json' или 'csv')
-    :param original_file: имя файла для оригинальных данных (если None, используется 'original_data_list.{extension}')
-    :param variant_file: имя файла для искаженных данных (если None, используется 'variant_data_list.{extension}')
+    :param original_file: путь для сохранения оригинальных данных
+    :param variant_file: путь для сохранения искаженных данных
     :param language: язык генерируемых данных ('ru' или 'en')
         - ru: русский язык (имена, фамилии и отчества на русском)
         - en: английский язык (имена, фамилии и middle names на английском)
@@ -115,16 +115,17 @@ def generate_and_save_test_data(probabilities, gen_fields, count=100, file_forma
     
     original_list, variant_list = dg.generate_records_pair(count, fields=field_names)
 
-    # Если имена файлов не указаны, используем стандартные имена
-    original_file = original_file or f'original_data_list.{file_format}'
-    variant_file = variant_file or f'variant_data_list.{file_format}'
-
+    # Сохраняем результаты
     if file_format == 'json':
-        dg.save_to_json(original_list, original_file)
-        dg.save_to_json(variant_list, variant_file)
+        if original_file:
+            dg.save_to_json(original_list, original_file)
+        if variant_file:
+            dg.save_to_json(variant_list, variant_file)
     elif file_format == 'csv':
-        dg.save_to_csv(original_list, original_file)
-        dg.save_to_csv(variant_list, variant_file)
+        if original_file:
+            dg.save_to_csv(original_list, original_file)
+        if variant_file:
+            dg.save_to_csv(variant_list, variant_file)
     else:
         raise ValueError("Неверный формат файла. Выберите '.json' или '.csv'.")
 
