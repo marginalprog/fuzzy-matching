@@ -61,7 +61,7 @@ def generate_mixed_language_data(count, ru_to_en_ratio=0.5):
             'Имя': ru_client['Имя'].replace('р', 'r').replace('н', 'n'),
             'Отчество': ru_client['Отчество'].replace('вич', 'vich').replace('вна', 'vna'),
             'email': ru_client['email'].replace('.ru', '.com'),
-            'Пол': ru_client['Пол']
+            # 'Пол': ru_client['Пол']
         }
         english_data.append(en_client)
     

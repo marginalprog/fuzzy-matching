@@ -5,7 +5,7 @@
         "Имя": "алеxандер",
         "Отчество": "сергеевич",
         "Должность": "CEO",
-        "Email": "aivanov@example.com"
+        "email": "aivanov@example.com"
     },
     {
         "ID": "E002",
@@ -13,7 +13,7 @@
         "Имя": "михаил",
         "Отчество": "иванович",
         "Должность": "CTO",
-        "Email": "mpetrov@example.com"
+        "email": "mpetrov@example.com"
     },
     {
         "ID": "E003",
@@ -21,7 +21,7 @@
         "Имя": "елена",
         "Отчество": "алеxандровна",
         "Должность": "CFO",
-        "Email": "ekuznetsova@example.com"
+        "email": "ekuznetsova@example.com"
     },
     {
         "ID": "E004",
@@ -29,7 +29,7 @@
         "Имя": "дмитры",
         "Отчество": "петрович",
         "Должность": "CIO",
-        "Email": "dsmirnov@example.com"
+        "email": "dsmirnov@example.com"
     },
     {
         "ID": "E005",
@@ -37,6 +37,6 @@
         "Имя": "владимир",
         "Отчество": "николаевич",
         "Должность": "COO",
-        "Email": "vsokolov@example.com"
+        "email": "vsokolov@example.com"
     }
 ]

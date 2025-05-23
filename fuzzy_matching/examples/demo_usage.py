@@ -388,7 +388,7 @@ def demo_file_operations():
         'Фамилия': 'LastName',
         'Имя': 'FirstName',
         'Отчество': 'MiddleName',
-        'email': 'Email',
+        'email': 'email',
         'Телефон': 'Phone'
     }
     

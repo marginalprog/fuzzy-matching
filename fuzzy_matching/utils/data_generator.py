@@ -55,7 +55,7 @@ class DataGenerator:
         'last_name': 'Фамилия',
         'first_name': 'Имя',
         'middle_name': 'Отчество',
-        'email': 'Email',
+        'email': 'email',
         'phone': 'Телефон',
         'gender': 'Пол'
     }
@@ -65,7 +65,7 @@ class DataGenerator:
         'last_name': 'LastName',
         'first_name': 'FirstName',
         'middle_name': 'MiddleName',
-        'email': 'Email',
+        'email': 'email',
         'phone': 'Phone',
         'gender': 'Gender'
     }
@@ -126,7 +126,6 @@ class DataGenerator:
         self.double_number_probability = probs.get('double_number_probability', self.DEFAULT_PROBABILITIES['double_number_probability'])
         self.suffix_probability = probs.get('suffix_probability', self.DEFAULT_PROBABILITIES['suffix_probability'])
 
-        print(f'Пришло: {probabilities}')
         self.gender_detector = gender.Detector()
 
     def doubling_letter(self, text):
@@ -309,17 +308,14 @@ class DataGenerator:
             
         # Если имя не заменено полностью, применяем другие искажения
         result = name
-        name_changed = False
         
         # Дублирование буквы
         if random.random() < self.double_char_probability:
             result = self.doubling_letter(result)
-            name_changed = True
             
         # Замена буквы
         if random.random() < self.change_char_probability:
             result = self.changing_letter(result)
-            name_changed = True
             
         # Добавление суффикса
         if random.random() < self.suffix_probability:
@@ -329,9 +325,7 @@ class DataGenerator:
             else:
                 english_suffixes = ['son', 'man', 'er', 'ley', 'ton', 'ford', 'field', 'wood']
                 result += random.choice(english_suffixes)
-            name_changed = True
-            
-        return result, name_changed
+        return result, False
 
     """Генерация списка записей"""
     def generate_clean_records_list(self, num_records, fields=None, use_patronymic_for_english=None):
@@ -341,8 +335,8 @@ class DataGenerator:
         :param num_records: количество записей для генерации
         :param fields: список полей для генерации (если None, используются все поля)
             Поля должны соответствовать значениям из self.FIELD_NAMES, например:
-            - Для русского формата: ['Фамилия', 'Имя', 'Отчество', 'Email']
-            - Для английского формата: ['LastName', 'FirstName', 'MiddleName', 'Email']
+            - Для русского формата: ['Фамилия', 'Имя', 'Отчество', 'email']
+            - Для английского формата: ['LastName', 'FirstName', 'MiddleName', 'email']
             - Поле 'id' всегда добавляется автоматически
         :param use_patronymic_for_english: если указано, переопределяет настройку из конструктора
         :return: список записей
@@ -433,8 +427,8 @@ class DataGenerator:
         :param num_records: количество записей для генерации
         :param fields: список полей для генерации
             Поля должны соответствовать значениям из self.FIELD_NAMES, например:
-            - Для русского формата: ['Фамилия', 'Имя', 'Отчество', 'Email']
-            - Для английского формата: ['LastName', 'FirstName', 'MiddleName', 'Email']
+            - Для русского формата: ['Фамилия', 'Имя', 'Отчество', 'email']
+            - Для английского формата: ['LastName', 'FirstName', 'MiddleName', 'email']
             - Поле 'id' всегда добавляется автоматически
         :return: кортеж (список оригинальных записей, список искаженных записей)
         """
