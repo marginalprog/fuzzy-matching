@@ -2,7 +2,9 @@
 
 Библиотека для нечеткого сопоставления данных с поддержкой транслитерации между русским и английским языками.
 
-## Особенности
+___
+
+### Особенности
 
 - Нечеткое сопоставление строк с использованием различных алгоритмов
 - Поддержка транслитерации между русским и английским языками
@@ -12,13 +14,13 @@
 - Консолидация данных из разных источников
 - Генерация тестовых данных на русском и английском языках
 
-## Установка
+### Установка
 
 ```bash
 pip install -e .
 ```
 
-## Структура проекта
+### Структура проекта
 
 ```
 fuzzy_matching/
@@ -62,7 +64,10 @@ data/
 
 При использовании CLI или API, файлы будут автоматически сохраняться в соответствующие каталоги.
 
-## Использование
+___
+
+
+### Использование
 
 ### Через командную строку (CLI)
 
@@ -121,6 +126,9 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
 - `Phone` - номер телефона
 - `Gender` - пол (м/ж)
 
+___
+
+
 ## Режимы работы CLI
 
 Основная команда`python -m fuzzy_matching.cli.process_data`:
@@ -176,6 +184,7 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
 | `--output-path` *(обязательный)* | Путь для сохранения объединённых данных |
 | `--verbose` | Вывод расширенной информации о ходе выполнения |
 
+___
 
 
 ### Работа с CSV-файлами
@@ -199,6 +208,8 @@ python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/origi
 ```bash
 python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.csv --format1 csv --input2 data/input/variant.csv --format2 csv --name-fields "surname:Фамилия,name:Имя,patronymic:Отчество,mail:email" --match-fields "Фамилия:0.4:false:TOKEN_SORT,Имя:0.3:false:PARTIAL_RATIO,Отчество:0.2:false:RATIO,email:0.1:false:RATIO" --threshold 0.7 --output-path data/output/consolidated.csv --transliteration-standard "Passport" --output-format csv
 ```
+
+___
 
 ### Через API
 
@@ -255,6 +266,7 @@ original_en, variant_en = generate_test_datasets(
 from fuzzy_matching.api import save_results
 save_results(matches, consolidated, "matches.json", "consolidated.json")
 ```
+___
 
 ## Алгоритмы нечеткого сопоставления
 
@@ -306,6 +318,7 @@ save_results(matches, consolidated, "matches.json", "consolidated.json")
 - Для полей, где важен порядок слов: `TOKEN_SORT`
 - Для полей, где важна только общая часть: `PARTIAL_RATIO`
 - Если не уверены, какой алгоритм выбрать: `WRatio` (комбинированный алгоритм)
+___
 
 ## Интерактивное демо
 
@@ -316,6 +329,21 @@ python -m fuzzy_matching.cli.main
 # или
 python -m fuzzy_matching
 ```
+
+## Тестирование
+
+Для запуска всех тестов выполните:
+
+```bash
+python -m unittest discover -s fuzzy_matching/tests
+```
+
+или для запуска конкретного теста:
+
+```bash
+python -m unittest fuzzy_matching.tests.test_error_handling
+```
+___
 
 ## Дополнительная документация
 
