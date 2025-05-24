@@ -88,21 +88,21 @@ python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/inp
 ##### Генерация данных на русском языке с русскими названиями полей
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,email" --language ru --field-names-format ru --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --swap-char-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,email" --language ru --field-names-format ru --verbose
 # Результат: test_ru_ru_original.json и test_ru_ru_variant.json
 ```
 
 ##### Генерация данных на английском языке с английскими названиями полей
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language en --field-names-format en --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --swap-char-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,email" --language en --field-names-format en --verbose
 # Результат: test_en_en_original.json и test_en_en_variant.json
 ```
 
 ##### Генерация данных на русском языке с английскими названиями полей
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language ru --field-names-format en --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --swap-char-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,email" --language ru --field-names-format en --verbose
 # Результат: test_en_ru_original.json и test_en_ru_variant.json
 ```
 
@@ -150,6 +150,7 @@ ___
 | `--change-domain-probability` | Вероятность замены домена в email (0–1, по умолчанию `0.3`) |
 | `--double-number-probability` | Вероятность дублирования цифры в телефоне (0–1, по умолчанию `0.3`) |
 | `--suffix-probability` | Вероятность добавления суффикса к ФИО (0–1, по умолчанию `0.05`) |
+| `--swap-char-probability` | Вероятность перестановки символов в имени (0–1, по умолчанию `0.1`) |
 | `--verbose` | Вывод расширенной информации о ходе выполнения |
 
 ---

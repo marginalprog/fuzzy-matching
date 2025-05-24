@@ -72,6 +72,32 @@ class TestErrorHandling(unittest.TestCase):
         with self.assertRaises(AttributeError):
             DataGenerator(language="xx")
         print(f"  {Colors.RED}Ожидаемый результат: AttributeError{Colors.ENDC}")
+        
+    def test_data_generator_swap_char(self):
+        print(f"{Colors.CYAN}{Colors.BOLD}[TEST] Перестановка при генерации данных{Colors.ENDC}")
+        probabilities = {
+            'double_char_probability': 0.0,
+            'change_char_probability': 0.0,
+            'swap_char_probability': 1.0,  # всегда переставлять
+            'change_name_probability': 0.0,
+            'change_domain_probability': 0.0,
+            'double_number_probability': 0.0,
+            'suffix_probability': 0.0
+        }
+        dg = DataGenerator(language=Language.RUS, probabilities=probabilities)
+        name = "Алексей"
+        swapped, _ = dg.vary_name(name, 'first', gender='м')
+        print(f"  {Colors.YELLOW}Исходное имя: {name}{Colors.ENDC}")
+        print(f"  {Colors.GREEN}Результат после swap: {swapped}{Colors.ENDC}")
+        self.assertNotEqual(name, swapped)
+        self.assertEqual(len(name), len(swapped))
+        self.assertEqual(name[0], swapped[0])  # первый символ не меняется
+        # Проверяем, что swap не ломает короткие строки
+        short = "Ан"
+        swapped_short, _ = dg.vary_name(short, 'first', gender='м')
+        print(f"  {Colors.YELLOW}Короткое имя: {short}{Colors.ENDC}")
+        print(f"  {Colors.GREEN}Результат после swap: {swapped_short}{Colors.ENDC}")
+        self.assertEqual(short, swapped_short)
 
     def test_invalid_probability_keys(self):
         print(f"\n{Colors.CYAN}{Colors.BOLD}[TEST] Некорректные ключи вероятностей (DataGenerator){Colors.ENDC}")
