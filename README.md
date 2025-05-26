@@ -2,7 +2,9 @@
 
 Библиотека для нечеткого сопоставления данных с поддержкой транслитерации между русским и английским языками.
 
-## Особенности
+___
+
+### Особенности
 
 - Нечеткое сопоставление строк с использованием различных алгоритмов
 - Поддержка транслитерации между русским и английским языками
@@ -12,13 +14,13 @@
 - Консолидация данных из разных источников
 - Генерация тестовых данных на русском и английском языках
 
-## Установка
+### Установка
 
 ```bash
 pip install -e .
 ```
 
-## Структура проекта
+### Структура проекта
 
 ```
 fuzzy_matching/
@@ -62,7 +64,10 @@ data/
 
 При использовании CLI или API, файлы будут автоматически сохраняться в соответствующие каталоги.
 
-## Использование
+___
+
+
+### Использование
 
 ### Через командную строку (CLI)
 
@@ -83,21 +88,21 @@ python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/inp
 ##### Генерация данных на русском языке с русскими названиями полей
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,email" --language ru --field-names-format ru --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --swap-char-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,email" --language ru --field-names-format ru --verbose
 # Результат: test_ru_ru_original.json и test_ru_ru_variant.json
 ```
 
 ##### Генерация данных на английском языке с английскими названиями полей
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language en --field-names-format en --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --swap-char-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,email" --language en --field-names-format en --verbose
 # Результат: test_en_en_original.json и test_en_en_variant.json
 ```
 
 ##### Генерация данных на русском языке с английскими названиями полей
 
 ```bash
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language ru --field-names-format en --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --swap-char-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,email" --language ru --field-names-format en --verbose
 # Результат: test_en_ru_original.json и test_en_ru_variant.json
 ```
 
@@ -121,6 +126,9 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
 - `Phone` - номер телефона
 - `Gender` - пол (м/ж)
 
+___
+
+
 ## Режимы работы CLI
 
 Основная команда`python -m fuzzy_matching.cli.process_data`:
@@ -142,6 +150,7 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
 | `--change-domain-probability` | Вероятность замены домена в email (0–1, по умолчанию `0.3`) |
 | `--double-number-probability` | Вероятность дублирования цифры в телефоне (0–1, по умолчанию `0.3`) |
 | `--suffix-probability` | Вероятность добавления суффикса к ФИО (0–1, по умолчанию `0.05`) |
+| `--swap-char-probability` | Вероятность перестановки символов в имени (0–1, по умолчанию `0.1`) |
 | `--verbose` | Вывод расширенной информации о ходе выполнения |
 
 ---
@@ -176,6 +185,7 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
 | `--output-path` *(обязательный)* | Путь для сохранения объединённых данных |
 | `--verbose` | Вывод расширенной информации о ходе выполнения |
 
+___
 
 
 ### Работа с CSV-файлами
@@ -199,6 +209,8 @@ python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/origi
 ```bash
 python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/original.csv --format1 csv --input2 data/input/variant.csv --format2 csv --name-fields "surname:Фамилия,name:Имя,patronymic:Отчество,mail:email" --match-fields "Фамилия:0.4:false:TOKEN_SORT,Имя:0.3:false:PARTIAL_RATIO,Отчество:0.2:false:RATIO,email:0.1:false:RATIO" --threshold 0.7 --output-path data/output/consolidated.csv --transliteration-standard "Passport" --output-format csv
 ```
+
+___
 
 ### Через API
 
@@ -255,6 +267,7 @@ original_en, variant_en = generate_test_datasets(
 from fuzzy_matching.api import save_results
 save_results(matches, consolidated, "matches.json", "consolidated.json")
 ```
+___
 
 ## Алгоритмы нечеткого сопоставления
 
@@ -306,6 +319,7 @@ save_results(matches, consolidated, "matches.json", "consolidated.json")
 - Для полей, где важен порядок слов: `TOKEN_SORT`
 - Для полей, где важна только общая часть: `PARTIAL_RATIO`
 - Если не уверены, какой алгоритм выбрать: `WRatio` (комбинированный алгоритм)
+___
 
 ## Интерактивное демо
 
@@ -316,6 +330,21 @@ python -m fuzzy_matching.cli.main
 # или
 python -m fuzzy_matching
 ```
+
+## Тестирование
+
+Для запуска всех тестов выполните:
+
+```bash
+python -m unittest discover -s fuzzy_matching/tests
+```
+
+или для запуска конкретного теста:
+
+```bash
+python -m unittest fuzzy_matching.tests.test_error_handling
+```
+___
 
 ## Дополнительная документация
 

@@ -17,19 +17,19 @@ python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/inp
 
 3. Генерация тестовых данных на русском языке с русскими названиями полей:
 ```
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,email" --language ru --field-names-format ru --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,email" --language ru --field-names-format ru --verbose
 ```
 # Результат: test_ru_ru_original.json и test_ru_ru_variant.json
 
 4. Генерация тестовых данных на русском языке с английскими названиями полей:
 ```
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language ru --field-names-format en --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language ru --field-names-format en --verbose
 ```
 # Результат: test_en_ru_original.json и test_en_ru_variant.json
 
 5. Генерация тестовых данных на английском языке с английскими названиями полей:
 ```
-python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.1 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language en --field-names-format en --verbose
+python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language en --field-names-format en --verbose
 ```
 # Результат: test_en_en_original.json и test_en_en_variant.json
 
@@ -54,6 +54,7 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
   --change-domain-probability: вероятность изменения домена в email (от 0 до 1)
   --double-number-probability: вероятность дублирования цифры в телефоне (от 0 до 1)
   --suffix-probability: вероятность добавления суффикса к ФИО (от 0 до 1)
+  --swap-char-probability: вероятность перестановки символов (от 0 до 1, по умолчанию 0.1)
 """
 
 import argparse
@@ -278,6 +279,8 @@ def main():
     parser.add_argument('--fuzzy-algorithm', choices=['RATIO', 'PARTIAL_RATIO', 'TOKEN_SORT', 'TOKEN_SET', 'WRatio'], 
                       default='TOKEN_SORT',
                       help="Основной алгоритм нечеткого сопоставления (для полей без явно указанного алгоритма)")
+    parser.add_argument('--swap-char-probability', type=float, default=0.1,
+                      help="Вероятность перестановки символов (от 0 до 1, по умолчанию 0.1)")
     
     args = parser.parse_args()
 
@@ -290,6 +293,7 @@ def main():
         probabilities = {
             'double_char_probability': args.double_char_probability,
             'change_char_probability': args.change_char_probability,
+            'swap_char_probability': args.swap_char_probability,
             'change_name_probability': args.change_name_probability,
             'change_domain_probability': args.change_domain_probability,
             'double_number_probability': args.double_number_probability,

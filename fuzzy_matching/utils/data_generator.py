@@ -32,6 +32,7 @@ class DataGenerator:
     - change_domain_probability: вероятность изменения домена в email
     - double_number_probability: вероятность дублирования цифры в телефоне
     - suffix_probability: вероятность добавления суффикса к ФИО
+    - swap_char_probability: вероятность перестановки символов
     
     Доступные языки:
     - ru: русский язык (Language.RUS)
@@ -47,7 +48,8 @@ class DataGenerator:
         'change_name_probability': 0.1,     # вероятность полной замены ФИО
         'change_domain_probability': 0.3,   # вероятность изменения домена в email
         'double_number_probability': 0.3,   # вероятность дублирования цифры
-        'suffix_probability': 0.1           # вероятность добавления суффикса к ФИО
+        'suffix_probability': 0.1,          # вероятность добавления суффикса к ФИО
+        'swap_char_probability': 0.1        # вероятность перестановки символов
     }
 
     # Названия полей для вывода данных
@@ -82,6 +84,7 @@ class DataGenerator:
         :param probabilities: словарь вероятностей различных искажений. Поддерживаются следующие ключи:
             - double_char_probability: вероятность дублирования буквы (0.0-1.0)
             - change_char_probability: вероятность замены буквы (0.0-1.0)
+            - swap_char_probability: вероятность перестановки символов (0.0-1.0)
             - change_name_probability: вероятность полной замены ФИО (0.0-1.0)
             - change_domain_probability: вероятность изменения домена в email (0.0-1.0)
             - double_number_probability: вероятность дублирования цифры в телефоне (0.0-1.0)
@@ -117,10 +120,13 @@ class DataGenerator:
             probs['double_number_probability'] = probs.pop('double_number')
         if 'suffix_addition' in probs:
             probs['suffix_probability'] = probs.pop('suffix_addition')
+        if 'swap_char_probability' not in probs:
+            probs['swap_char_probability'] = self.DEFAULT_PROBABILITIES['swap_char_probability']
         
         # Устанавливаем вероятности с учетом значений по умолчанию
         self.double_char_probability = probs.get('double_char_probability', self.DEFAULT_PROBABILITIES['double_char_probability'])
         self.change_char_probability = probs.get('change_char_probability', self.DEFAULT_PROBABILITIES['change_char_probability'])
+        self.swap_char_probability = probs.get('swap_char_probability', self.DEFAULT_PROBABILITIES['swap_char_probability'])
         self.change_name_probability = probs.get('change_name_probability', self.DEFAULT_PROBABILITIES['change_name_probability'])
         self.change_domain_probability = probs.get('change_domain_probability', self.DEFAULT_PROBABILITIES['change_domain_probability'])
         self.double_number_probability = probs.get('double_number_probability', self.DEFAULT_PROBABILITIES['double_number_probability'])
@@ -284,6 +290,22 @@ class DataGenerator:
         
         return result
 
+    def swap_random_char(self, text):
+        """
+        Переставляет один случайный символ (кроме первого) с ближайшим или через один (индекс +1 или +2).
+        :param text: исходный текст
+        :return: текст с переставленными символами
+        """
+        if len(text) < 3:
+            return text
+        idx = random.randint(1, len(text) - 2)
+        swap_with = idx + 1 if random.random() < 0.5 or idx + 2 >= len(text) else idx + 2
+        if swap_with >= len(text):
+            swap_with = len(text) - 1
+        text_list = list(text)
+        text_list[idx], text_list[swap_with] = text_list[swap_with], text_list[idx]
+        return ''.join(text_list)
+
     def vary_name(self, name, part, gender='male') -> (str, bool):
         """
         Вносит искажения в одно из слов ФИО (имя, фамилию или отчество).
@@ -316,14 +338,24 @@ class DataGenerator:
         # Замена буквы
         if random.random() < self.change_char_probability:
             result = self.changing_letter(result)
-            
+        
+        # Перестановка символов
+        if random.random() < self.swap_char_probability:
+            result = self.swap_random_char(result)
+        
         # Добавление суффикса
         if random.random() < self.suffix_probability:
             if self.language == Language.RUS:
-                russian_suffixes = ['ов', 'ев', 'ин', 'ский', 'цкий']
+                if gender == 'ж':
+                    russian_suffixes = ['ова', 'ева', 'ина', 'ская', 'цкая']
+                else:
+                    russian_suffixes = ['ов', 'ев', 'ин', 'ский', 'цкий']
                 result += random.choice(russian_suffixes)
             else:
-                english_suffixes = ['son', 'man', 'er', 'ley', 'ton', 'ford', 'field', 'wood']
+                if gender == 'ж':
+                    english_suffixes = ['ley', 'ton', 'field', 'wood', 'lyn', 'ette', 'ine', 'elle']
+                else:
+                    english_suffixes = ['son', 'man', 'er', 'ley', 'ton', 'ford', 'field', 'wood']
                 result += random.choice(english_suffixes)
         return result, False
 
@@ -402,20 +434,28 @@ class DataGenerator:
             # Получаем пол (если доступен), иначе используем мужской пол по умолчанию
             gender = distorted_record.get(self.FIELD_NAMES.get('gender', 'Пол'), 'м')
             new_person = False
+            # Флаг, если хотя бы одно из ФИО было полностью заменено
+            new_person_any = False
             if self.FIELD_NAMES['last_name'] in fields:
                 last_name, new_person = self.vary_name(distorted_record[self.FIELD_NAMES['last_name']], 'last', gender)
                 distorted_record[self.FIELD_NAMES['last_name']] = last_name
+                if new_person:
+                    new_person_any = True
             if self.FIELD_NAMES['first_name'] in fields:
                 first_name, new_person = self.vary_name(distorted_record[self.FIELD_NAMES['first_name']], 'first', gender)
                 distorted_record[self.FIELD_NAMES['first_name']] = first_name
+                if new_person:
+                    new_person_any = True
             if self.FIELD_NAMES['middle_name'] in fields:
                 middle_name, new_person = self.vary_name(distorted_record[self.FIELD_NAMES['middle_name']], 'middle', gender)
                 distorted_record[self.FIELD_NAMES['middle_name']] = middle_name
+                if new_person:
+                    new_person_any = True
             if self.FIELD_NAMES['email'] in fields:
-                email = self.vary_email(distorted_record[self.FIELD_NAMES['email']], new_person)
+                email = self.vary_email(distorted_record[self.FIELD_NAMES['email']], new_person_any)
                 distorted_record[self.FIELD_NAMES['email']] = email
             if self.FIELD_NAMES['phone'] in fields:
-                phone = self.vary_phone_number(distorted_record[self.FIELD_NAMES['phone']], new_person)
+                phone = self.vary_phone_number(distorted_record[self.FIELD_NAMES['phone']], new_person_any)
                 distorted_record[self.FIELD_NAMES['phone']] = phone
             distorted_records.append(distorted_record)
         return distorted_records
