@@ -71,5 +71,5 @@ class MatchConfig:
     sort_before_match: bool = False
     sort_field: Optional[str] = None
     transliteration: TransliterationConfig = field(default_factory=TransliterationConfig)
-    fuzzy_algorithm: FuzzyAlgorithm = FuzzyAlgorithm.TOKEN_SORT
+    fuzzy_algorithm: FuzzyAlgorithm = FuzzyAlgorithm.RATIO
 
