@@ -1,4 +1,6 @@
 import random
+import warnings
+
 import faker
 import json
 import csv
@@ -181,9 +183,10 @@ class DataGenerator:
             # Если ФИО было полностью изменено, генерируем новый номер телефона
             return self.fake.phone_number()
 
-        # Изменяем одну случайную цифру в номере телефона
-        idx = random.randint(0, len(digits) - 1)
-        digits[idx] = str(random.randint(0, 9))
+        # Изменяем одну случайную цифру в номере телефона с вероятностью 0.1
+        if random.random() < 0.1:
+            idx = random.randint(0, len(digits) - 1)
+            digits[idx] = str(random.randint(0, 9))
 
         # Дополнительная ошибка с заданной вероятностью
         if random.random() < self.double_number_probability:
@@ -194,28 +197,38 @@ class DataGenerator:
     def vary_email(self, email, new_person):
         """
         Вносит искажения в email.
-        Если new_person=True, генерируется новый email; иначе
-        - дублирует или заменяет букву в логине,
-        — или (с некоторой вероятностью) изменяет букву в домене.
+        Если new_person=True, генерируется новый email; иначе:
+        - дублирует букву в логине (double_char_probability)
+        - заменяет букву в логине (change_char_probability)
+        - изменяет букву в домене (change_domain_probability)
+        
+        Каждая вероятность независимо влияет на соответствующее изменение.
+        Может произойти несколько изменений одновременно, что имитирует реальные ошибки.
         """
         if new_person:
             # Если ФИО было полностью изменено, генерируем новый email
             return self.fake.email()
+        
         user, domain = email.split('@')
-        rnd = random.random()
-        if rnd < self.double_char_probability:
-            # Дублируем букву в логине email
-            return f"{self.doubling_letter(user)}@{domain}"
-        elif rnd < self.double_char_probability + self.change_char_probability:
-            # Заменяем букву в логине email
-            return f"{self.changing_letter(user, email_flag=True)}@{domain}"
-        elif rnd < self.double_char_probability + self.change_char_probability + self.change_domain_probability:
-            # Изменяем букву и в логине, и в домене
-            new_user = self.changing_letter(user, email_flag=True)
-            new_domain = self.changing_letter(domain, email_flag=True)
-            return f"{new_user}@{new_domain}"
-        # todo: Добавляем случайное число к имени пользователя name += str(random.randint(10, 99))
-        # Без изменений
+        changed = False
+        
+        # Каждое изменение проверяется независимо
+        if random.random() < self.double_char_probability:
+            user = self.doubling_letter(user)
+            changed = True
+        
+        if random.random() < self.change_char_probability:
+            user = self.changing_letter(user, email_flag=True)
+            changed = True
+        
+        if random.random() < self.change_domain_probability:
+            domain = self.changing_letter(domain, email_flag=True)
+            changed = True
+        
+        # Если были изменения, формируем новый email
+        if changed:
+            return f"{user}@{domain}"
+        
         return email
 
     def _generate_middle_name_male(self):
@@ -433,7 +446,6 @@ class DataGenerator:
 
             # Получаем пол (если доступен), иначе используем мужской пол по умолчанию
             gender = distorted_record.get(self.FIELD_NAMES.get('gender', 'Пол'), 'м')
-            new_person = False
             # Флаг, если хотя бы одно из ФИО было полностью заменено
             new_person_any = False
             if self.FIELD_NAMES['last_name'] in fields:

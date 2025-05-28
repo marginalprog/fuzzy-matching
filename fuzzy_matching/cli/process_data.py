@@ -277,7 +277,7 @@ def main():
     parser.add_argument('--transliterate-fields',
                       help="Поля для транслитерации, разделенные запятыми")
     parser.add_argument('--fuzzy-algorithm', choices=['RATIO', 'PARTIAL_RATIO', 'TOKEN_SORT', 'TOKEN_SET', 'WRatio'], 
-                      default='TOKEN_SORT',
+                      default='RATIO',
                       help="Основной алгоритм нечеткого сопоставления (для полей без явно указанного алгоритма)")
     parser.add_argument('--swap-char-probability', type=float, default=0.1,
                       help="Вероятность перестановки символов (от 0 до 1, по умолчанию 0.1)")

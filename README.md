@@ -47,9 +47,17 @@ fuzzy_matching/
 │   ├── __init__.py
 │   ├── api_example.py
 │   └── technical_example.py
-└── tests/               # Тесты
-    ├── __init__.py
-    └── test_transliteration.py
+├── tests/               # Тесты
+│   ├── __init__.py
+│   ├── test_error_handling.py
+│   ├── test_transliteration.py
+│   ├── benchmark_test.py
+│   └── advanced_benchmark.py
+└── data/               # Директория для данных
+    ├── input/          # Входные данные
+    │   └── .gitkeep
+    └── output/         # Результаты обработки
+        └── .gitkeep
 ```
 
 ### Структура директорий данных
@@ -152,6 +160,7 @@ ___
 | `--suffix-probability` | Вероятность добавления суффикса к ФИО (0–1, по умолчанию `0.05`) |
 | `--swap-char-probability` | Вероятность перестановки символов в имени (0–1, по умолчанию `0.1`) |
 | `--verbose` | Вывод расширенной информации о ходе выполнения |
+| `--fuzzy-algorithm` | Основной алгоритм нечеткого сопоставления (по умолчанию `RATIO`) |
 
 ---
 
