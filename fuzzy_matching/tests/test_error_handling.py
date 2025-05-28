@@ -43,11 +43,11 @@ class TestErrorHandling(unittest.TestCase):
         print(f"  {Colors.GREEN}Ожидаемый результат: FileNotFoundError{Colors.ENDC}")
 
     def test_invalid_field_in_record(self):
-        print(f"\n{Colors.CYAN}{Colors.BOLD}[TEST] Проверка обработки записи с отсутствующим полем (._weighted_average()){Colors.ENDC}")
+        print(f"\n{Colors.CYAN}{Colors.BOLD}[TEST] Проверка обработки записи с отсутствующим полем (._weighted_average_similarity()){Colors.ENDC}")
         record1 = {'name': 'Иванов'}
         record2 = {'wrong_field': 'Ivanov'}
         print(f"  {Colors.YELLOW}Параметры: --record1={record1}, --record2={record2}{Colors.ENDC}")
-        sim = self.matcher._weighted_average(record1, record2)
+        sim = self.matcher._weighted_average_similarity(record1, record2)
         print(f"  {Colors.GREEN}Результат: {sim}{Colors.ENDC}")
         self.assertIsInstance(sim, tuple)
         print(f"  {Colors.GREEN}Ожидаемый результат: корректная обработка, не выбрасывается исключение{Colors.ENDC}")

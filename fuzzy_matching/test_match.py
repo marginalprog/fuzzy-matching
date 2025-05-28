@@ -53,7 +53,7 @@ pprint(variant_data[0])
 print("\nВыполняем сопоставление...")
 for record1 in original_data[:1]:
     for record2 in variant_data[:1]:
-        similarity = matcher._weighted_average(record1, record2)
+        similarity = matcher._weighted_average_similarity(record1, record2)
         print(f"Совпадение между {record1['id']} и {record2['id']}: {similarity[0]:.2f}")
         
         # Выводим детали совпадения

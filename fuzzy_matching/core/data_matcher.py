@@ -177,7 +177,7 @@ class DataMatcher:
             
         return sorted(records, key=lambda x: tuple(x.get(k, '') for k in sort_keys))
 
-    def _weighted_average(self, record1, record2):
+    def _weighted_average_similarity(self, record1, record2):
         """
         Вычисляет взвешенную среднюю схожесть между двумя записями
         
@@ -629,7 +629,7 @@ class DataMatcher:
                     continue  # Пропускаем уже сопоставленные записи из block2
 
                 # Вычисляем схожесть между записями
-                similarity, field_similarities = self._weighted_average(record1, record2)
+                similarity, field_similarities = self._weighted_average_similarity(record1, record2)
 
                 if similarity > max_similarity:
                     max_similarity = similarity

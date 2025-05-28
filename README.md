@@ -47,9 +47,17 @@ fuzzy_matching/
 │   ├── __init__.py
 │   ├── api_example.py
 │   └── technical_example.py
-└── tests/               # Тесты
-    ├── __init__.py
-    └── test_transliteration.py
+├── tests/               # Тесты
+│   ├── __init__.py
+│   ├── test_error_handling.py
+│   ├── test_transliteration.py
+│   ├── benchmark_test.py
+│   └── advanced_benchmark.py
+└── data/               # Директория для данных
+    ├── input/          # Входные данные
+    │   └── .gitkeep
+    └── output/         # Результаты обработки
+        └── .gitkeep
 ```
 
 ### Структура директорий данных
