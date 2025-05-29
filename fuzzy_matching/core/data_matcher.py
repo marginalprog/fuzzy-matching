@@ -98,12 +98,18 @@ class DataMatcher:
         records = []
         for obj in raw:
             record = {}
-            for orig_key, target_key in name_fields.items():
-                val = str(obj.get(orig_key, '')).strip()
-                if target_key in record and record[target_key]:
-                    record[target_key] = f"{record[target_key]} {val}"
-                else:
-                    record[target_key] = val
+            if name_fields:
+                # Если указан маппинг полей, используем его
+                for orig_key, target_key in name_fields.items():
+                    val = str(obj.get(orig_key, '')).strip()
+                    if target_key in record and record[target_key]:
+                        record[target_key] = f"{record[target_key]} {val}"
+                    else:
+                        record[target_key] = val
+            else:
+                # Если маппинг не указан, используем оригинальные имена полей
+                for key, val in obj.items():
+                    record[key] = str(val).strip()
             records.append(record)
         return records
 
@@ -415,8 +421,8 @@ class DataMatcher:
         consolidated = []
         
         # Копируем данные, чтобы не изменять оригиналы
-        data1 = data1.copy()
-        data2 = data2.copy()
+        data1 = [record.copy() for record in data1]
+        data2 = [record.copy() for record in data2]
         
         # Сортируем данные, если это указано в конфигурации
         if self.sort_before_match:
@@ -465,7 +471,7 @@ class DataMatcher:
                     consolidated.append(record.copy())
         else:
             # Если совпадений нет - объединяем оба набора
-            consolidated = data1 + data2
+            consolidated = [record.copy() for record in data1 + data2]
         
         return matches, consolidated
     
@@ -496,22 +502,38 @@ class DataMatcher:
                     if lang is None:
                         if target_lang == 'en':
                             # Предполагаем, что это русский текст
-                            new_item[field] = translit.transliterate_ru_to_en(
+                            transliterated = translit.transliterate_ru_to_en(
                                 source_value, self.transliteration_standard
                             )
+                            # Сохраняем оригинальный регистр первой буквы
+                            if source_value and source_value[0].isupper():
+                                transliterated = transliterated.capitalize()
+                            new_item[field] = transliterated
                         elif target_lang == 'ru':
                             # Предполагаем, что это английский текст
-                            new_item[field] = translit.transliterate_en_to_ru(
+                            transliterated = translit.transliterate_en_to_ru(
                                 source_value, self.transliteration_standard
                             )
+                            # Сохраняем оригинальный регистр первой буквы
+                            if source_value and source_value[0].isupper():
+                                transliterated = transliterated.capitalize()
+                            new_item[field] = transliterated
                     elif lang == 'ru' and target_lang == 'en':
-                        new_item[field] = translit.transliterate_ru_to_en(
+                        transliterated = translit.transliterate_ru_to_en(
                             source_value, self.transliteration_standard
                         )
+                        # Сохраняем оригинальный регистр первой буквы
+                        if source_value and source_value[0].isupper():
+                            transliterated = transliterated.capitalize()
+                        new_item[field] = transliterated
                     elif lang == 'en' and target_lang == 'ru':
-                        new_item[field] = translit.transliterate_en_to_ru(
+                        transliterated = translit.transliterate_en_to_ru(
                             source_value, self.transliteration_standard
                         )
+                        # Сохраняем оригинальный регистр первой буквы
+                        if source_value and source_value[0].isupper():
+                            transliterated = transliterated.capitalize()
+                        new_item[field] = transliterated
             result.append(new_item)
         
         return result

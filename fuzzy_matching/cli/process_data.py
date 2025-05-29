@@ -86,8 +86,8 @@ from fuzzy_matching.utils.cli_utils import generate_and_save_test_data
 from fuzzy_matching.utils.data_generator import DataGenerator, Language
 
 # Определение путей по умолчанию для файлов данных и результатов
-DATA_INPUT_DIR = 'data/input'
-DATA_OUTPUT_DIR = 'data/output'
+DATA_INPUT_DIR = os.path.join('data', 'input')
+DATA_OUTPUT_DIR = os.path.join('data', 'output')
 
 # Создаем директории, если они еще не существуют
 os.makedirs(DATA_INPUT_DIR, exist_ok=True)
@@ -102,18 +102,34 @@ if not os.listdir(DATA_OUTPUT_DIR):
     with open(os.path.join(DATA_OUTPUT_DIR, '.gitkeep'), 'w') as f:
         f.write('# Эта директория используется для хранения результатов обработки\n')
 
-def parse_name_fields(fields_str):
+def parse_name_fields(fields_str, match_fields=None):
     """
     Парсит строку с соответствием полей в формате 'source1:target1,source2:target2'
     и возвращает словарь соответствий.
+    
+    :param fields_str: строка с соответствием полей
+    :param match_fields: список MatchFieldConfig для определения имен полей
+    :return: словарь соответствий полей
     """
     if not fields_str:
+        # Если есть match_fields, используем их имена полей
+        if match_fields:
+            return {field.field: field.field for field in match_fields}
+        
+        # Определяем язык на основе наличия файлов
+        if os.path.exists(os.path.join(DATA_INPUT_DIR, 'test_en_en_original.json')):
+            return {
+                'id': 'id',
+                'LastName': 'LastName',
+                'FirstName': 'FirstName',
+                'MiddleName': 'MiddleName',
+                'email': 'email'
+            }
         return {
             'id': 'id',
             'Фамилия': 'Фамилия',
             'Имя': 'Имя',
             'Отчество': 'Отчество',
-            'email': 'email',
             'email': 'email',
             'Телефон': 'Телефон'
         }
@@ -137,6 +153,14 @@ def parse_match_fields(fields_str):
     :return: список объектов MatchFieldConfig
     """
     if not fields_str:
+        # Определяем язык на основе наличия файлов
+        if os.path.exists(os.path.join(DATA_INPUT_DIR, 'test_en_en_original.json')):
+            return [
+                MatchFieldConfig(field='LastName', weight=0.4, transliterate=False),
+                MatchFieldConfig(field='FirstName', weight=0.3, transliterate=False),
+                MatchFieldConfig(field='MiddleName', weight=0.2, transliterate=False),
+                MatchFieldConfig(field='email', weight=0.1, transliterate=False)
+            ]
         return [
             MatchFieldConfig(field='Фамилия', weight=0.4, transliterate=False),
             MatchFieldConfig(field='Имя', weight=0.3, transliterate=False),
@@ -461,7 +485,7 @@ def main():
         return
     
     # Определяем соответствие полей
-    name_fields = parse_name_fields(args.name_fields)
+    name_fields = parse_name_fields(args.name_fields, parse_match_fields(args.match_fields))
     
     # Создаем конфигурацию полей для сопоставления
     match_fields = parse_match_fields(args.match_fields)
