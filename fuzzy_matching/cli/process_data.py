@@ -587,17 +587,59 @@ def main():
         if not args.target_lang:
             print(f"{Colors.RED}Ошибка: для режима транслитерации необходимо указать целевой язык (--target-lang){Colors.ENDC}")
             sys.exit(1)
+            
+        if not args.transliterate_fields:
+            print(f"{Colors.RED}Ошибка: необходимо указать поля для транслитерации (--transliterate-fields){Colors.ENDC}")
+            sys.exit(1)
         
         if args.verbose:
             print(f"{Colors.CYAN}Транслитерация данных из {args.input1} в {args.target_lang}...{Colors.ENDC}")
         
         # Определяем поля для транслитерации
-        fields_to_transliterate = []
-        if args.transliterate_fields:
-            fields_to_transliterate = [f.strip() for f in args.transliterate_fields.split(',')]
-        else:
-            # По умолчанию транслитерируем все текстовые поля
-            fields_to_transliterate = ['Фамилия', 'Имя', 'Отчество']
+        fields_to_transliterate = [f.strip() for f in args.transliterate_fields.split(',')]
+        
+        # Загружаем данные без маппинга полей
+        try:
+            if args.verbose:
+                print(f"{Colors.CYAN}Загрузка данных из {args.input1}...{Colors.ENDC}")
+            
+            data1 = None
+            if args.format1 == 'csv':
+                data1 = matcher.load_from_csv(args.input1, {})  # Пустой маппинг для сохранения оригинальных имен полей
+            else:
+                data1 = matcher.load_from_json(args.input1, None)  # None для сохранения оригинальных имен полей
+            
+            if args.verbose:
+                print(f"{Colors.GREEN}Загружено {len(data1)} записей из {args.input1}{Colors.ENDC}")
+        except Exception as e:
+            print(f"{Colors.RED}Ошибка при загрузке данных из {args.input1}: {str(e)}{Colors.ENDC}")
+            sys.exit(1)
+        
+        # Проверяем, что все указанные поля существуют в данных
+        if data1 and len(data1) > 0:
+            missing_fields = [field for field in fields_to_transliterate if field not in data1[0]]
+            if missing_fields:
+                print(f"{Colors.RED}Ошибка: следующие поля отсутствуют в данных: {', '.join(missing_fields)}{Colors.ENDC}")
+                print(f"{Colors.RED}Доступные поля: {', '.join(data1[0].keys())}{Colors.ENDC}")
+                sys.exit(1)
+        
+        # Обновляем конфигурацию для включения транслитерации
+        config.transliteration.enabled = True
+        config.transliteration.standard = args.transliteration_standard or "Passport"
+        
+        # Обновляем поля в конфигурации для транслитерации
+        config.fields = [
+            MatchFieldConfig(
+                field=field,
+                weight=1.0,
+                transliterate=True,
+                fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SORT
+            )
+            for field in fields_to_transliterate
+        ]
+        
+        # Пересоздаем matcher с обновленной конфигурацией
+        matcher = DataMatcher(config=config)
         
         # Транслитерируем данные
         transliterated_data = matcher.transliterate_data(
@@ -606,53 +648,30 @@ def main():
             fields=fields_to_transliterate
         )
         
-        # Выводим первые 5 оригинальных и транслитерированных записей в виде таблицы
         if args.verbose:
-            print(f"\n{Colors.CYAN}Первые 5 оригинальных записей:{Colors.ENDC}")
+            print("\nПервые 5 оригинальных записей:")
+            table = PrettyTable()
+            table.field_names = ["№"] + fields_to_transliterate
             
-            # Создаем таблицу для оригинальных данных
-            orig_table = PrettyTable()
-            
-            # Добавляем заголовки
-            orig_table.field_names = ["№"] + fields_to_transliterate
-            
-            # Добавляем данные
-            for i, record in enumerate(data1[:5]):
-                row = [i + 1]  # Номер записи
+            for i, record in enumerate(data1[:5], 1):
+                row = [i]
                 for field in fields_to_transliterate:
                     row.append(record.get(field, ""))
-                orig_table.add_row(row)
+                table.add_row(row)
             
-            # Настраиваем стиль таблицы
-            orig_table.align = "l"  # Выравнивание по левому краю
-            orig_table.border = True
-            orig_table.header = True
+            print(table)
             
-            # Выводим таблицу
-            print(orig_table)
+            print("\nПервые 5 транслитерированных записей:")
+            table = PrettyTable()
+            table.field_names = ["№"] + fields_to_transliterate
             
-            print(f"\n{Colors.CYAN}Первые 5 транслитерированных записей:{Colors.ENDC}")
-            
-            # Создаем таблицу для транслитерированных данных
-            trans_table = PrettyTable()
-            
-            # Добавляем заголовки
-            trans_table.field_names = ["№"] + fields_to_transliterate
-            
-            # Добавляем данные
-            for i, record in enumerate(transliterated_data[:5]):
-                row = [i + 1]  # Номер записи
+            for i, record in enumerate(transliterated_data[:5], 1):
+                row = [i]
                 for field in fields_to_transliterate:
                     row.append(record.get(field, ""))
-                trans_table.add_row(row)
+                table.add_row(row)
             
-            # Настраиваем стиль таблицы
-            trans_table.align = "l"  # Выравнивание по левому краю
-            trans_table.border = True
-            trans_table.header = True
-            
-            # Выводим таблицу
-            print(trans_table)
+            print(table)
         
         # Используем путь по умолчанию, если путь не указан
         output_path = args.output_path or os.path.join(DATA_OUTPUT_DIR, f'transliterated.{args.output_format}')

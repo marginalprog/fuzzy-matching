@@ -82,7 +82,7 @@ def main():
                 print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_ru_ru_original.json --format1 json --target-lang en --transliterate-fields \"Фамилия,Имя,Отчество\" --transliteration-standard \"Passport\" --output-path data/output/transliterated_en.json --verbose{Colors.ENDC}", end="")
                 
                 print(f"\n\n{Colors.YELLOW}Пример 2: Обратная транслитерация с английского на русский (поддерживается только ГОСТ):{Colors.ENDC}")
-                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_en_en_original.json --format1 json --target-lang ru --transliteration-standard \"GOST\" --transliterate-fields \"LastName,FirstName,MiddleName\" --name-fields \"LastName:LastName,FirstName:FirstName,MiddleName:MiddleName,email:email\" --output-path data/output/transliterated_ru.json --verbose{Colors.ENDC}", end="")
+                print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_en_en_original.json --format1 json --target-lang ru --transliterate-fields \"LastName,FirstName,MiddleName\" --transliteration-standard \"GOST\" --output-path data/output/transliterated_ru.json --verbose{Colors.ENDC}", end="")
                 
                 cmd = input(f"\n\n{Colors.YELLOW}Введите команду или нажмите {Colors.BOLD}Enter{Colors.ENDC}{Colors.YELLOW} для возврата в меню: {Colors.ENDC}")
                 if cmd.strip():
