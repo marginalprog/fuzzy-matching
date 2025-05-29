@@ -98,8 +98,28 @@ from fuzzy_matching.utils.cli_utils import generate_and_save_test_data
 from fuzzy_matching.utils.data_generator import DataGenerator, Language
 
 # Определение путей по умолчанию для файлов данных и результатов
-DATA_INPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'input')
-DATA_OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'output')
+# Находим корневую директорию проекта (где находится setup.py или pyproject.toml)
+def find_project_root():
+    """
+    Находит корневую директорию проекта, поднимаясь вверх по дереву директорий,
+    пока не найдет setup.py или pyproject.toml
+    """
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    while current_dir != '/':
+        if os.path.exists(os.path.join(current_dir, 'setup.py')) or \
+           os.path.exists(os.path.join(current_dir, 'pyproject.toml')):
+            return current_dir
+        current_dir = os.path.dirname(current_dir)
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+PROJECT_ROOT = find_project_root()
+
+# Меняем текущую рабочую директорию на корневую директорию проекта
+os.chdir(PROJECT_ROOT)
+
+# Определяем пути относительно корня проекта
+DATA_INPUT_DIR = os.path.join(PROJECT_ROOT, 'data', 'input')
+DATA_OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'data', 'output')
 
 # Создаем директории, если они еще не существуют
 os.makedirs(DATA_INPUT_DIR, exist_ok=True)
@@ -200,6 +220,12 @@ def parse_match_fields(fields_str):
 
 
 def main():
+    # Выводим информацию о путях в начале выполнения
+    # print(f"\nТекущая рабочая директория: {os.getcwd()}")
+    # print(f"Корневая директория проекта: {PROJECT_ROOT}")
+    # print(f"Директория для входных данных: {DATA_INPUT_DIR}")
+    # print(f"Директория для результатов: {DATA_OUTPUT_DIR}\n")
+
     parser = argparse.ArgumentParser(description="Сопоставление или транслитерация данных из файлов")
     
     # Общие параметры
@@ -860,6 +886,17 @@ def save_to_csv(data, filename):
         writer.writerows(data)
 
 if __name__ == "__main__":
+    # Проверяем, запущен ли скрипт как модуль
+    if not __package__:
+        print(f"{Colors.RED}Ошибка: Скрипт должен запускаться как модуль Python.{Colors.ENDC}")
+        print(f"{Colors.YELLOW}Правильный способ запуска:{Colors.ENDC}")
+        print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data [аргументы]{Colors.ENDC}")
+        print(f"\n{Colors.YELLOW}В PyCharm:{Colors.ENDC}")
+        print("1. Run -> Edit Configurations")
+        print("2. Module name: fuzzy_matching.cli.process_data")
+        print("3. Working directory: корневая директория проекта")
+        sys.exit(1)
+    
     try:
         main()
     except Exception as e:
