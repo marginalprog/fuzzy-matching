@@ -3,6 +3,12 @@
 Скрипт для сопоставления или транслитерации данных из CSV/JSON файлов.
 Запускается только через командную строку.
 
+Структура проекта:
+/fuzzy_matching/     # Корневая директория проекта
+    /data/          # Директория для данных
+        /input/     # Входящие файлы
+        /output/    # Результаты обработки
+
 Примеры использования:
 
 1. Сопоставление данных и поиск похожих записей:
@@ -19,25 +25,25 @@ python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/inp
 ```
 python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,email" --language ru --field-names-format ru --verbose
 ```
-# Результат: test_ru_ru_original.json и test_ru_ru_variant.json
+# Результат: data/input/test_ru_ru_original.json и data/input/test_ru_ru_variant.json
 
 4. Генерация тестовых данных на русском языке с английскими названиями полей:
 ```
 python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language ru --field-names-format en --verbose
 ```
-# Результат: test_en_ru_original.json и test_en_ru_variant.json
+# Результат: data/input/test_en_ru_original.json и data/input/test_en_ru_variant.json
 
 5. Генерация тестовых данных на английском языке с английскими названиями полей:
 ```
 python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language en --field-names-format en --verbose
 ```
-# Результат: test_en_en_original.json и test_en_en_variant.json
+# Результат: data/input/test_en_en_original.json и data/input/test_en_en_variant.json
 
 Описание основных параметров:
   --mode: режим работы (match, transliterate или generate)
-  --input1, --input2: пути к входным файлам
+  --input1, --input2: пути к входным файлам (относительно корня проекта, например data/input/file.json)
   --format1, --format2: форматы входных файлов (csv или json)
-  --output-matches: путь для сохранения найденных совпадений
+  --output-matches: путь для сохранения найденных совпадений (относительно корня проекта)
   --output-path: путь для сохранения результатов (транслитерированных или консолидированных данных)
   --output-original: путь для сохранения оригинальных сгенерированных данных
   --output-variant: путь для сохранения искаженных сгенерированных данных
@@ -55,6 +61,12 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
   --double-number-probability: вероятность дублирования цифры в телефоне (от 0 до 1)
   --suffix-probability: вероятность добавления суффикса к ФИО (от 0 до 1)
   --swap-char-probability: вероятность перестановки символов (от 0 до 1, по умолчанию 0.1)
+
+Примечание:
+- Все пути к файлам указываются относительно корня проекта
+- Входные файлы должны находиться в директории data/input
+- Результаты сохраняются в директорию data/output
+- При генерации тестовых данных файлы именуются по шаблону: test_[формат_полей]_[язык]_[тип].json
 """
 
 import argparse
@@ -86,8 +98,8 @@ from fuzzy_matching.utils.cli_utils import generate_and_save_test_data
 from fuzzy_matching.utils.data_generator import DataGenerator, Language
 
 # Определение путей по умолчанию для файлов данных и результатов
-DATA_INPUT_DIR = os.path.join('data', 'input')
-DATA_OUTPUT_DIR = os.path.join('data', 'output')
+DATA_INPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'input')
+DATA_OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'output')
 
 # Создаем директории, если они еще не существуют
 os.makedirs(DATA_INPUT_DIR, exist_ok=True)
@@ -153,18 +165,9 @@ def parse_match_fields(fields_str):
     :return: список объектов MatchFieldConfig
     """
     if not fields_str:
-        # Определяем язык на основе наличия файлов
-        if os.path.exists(os.path.join(DATA_INPUT_DIR, 'test_en_en_original.json')):
-            return [
-                MatchFieldConfig(field='LastName', weight=0.4, transliterate=False),
-                MatchFieldConfig(field='FirstName', weight=0.3, transliterate=False),
-                MatchFieldConfig(field='MiddleName', weight=0.2, transliterate=False),
-                MatchFieldConfig(field='email', weight=0.1, transliterate=False)
-            ]
+        # Используем базовый набор полей по умолчанию
         return [
-            MatchFieldConfig(field='Фамилия', weight=0.4, transliterate=False),
-            MatchFieldConfig(field='Имя', weight=0.3, transliterate=False),
-            MatchFieldConfig(field='Отчество', weight=0.2, transliterate=False),
+            MatchFieldConfig(field='id', weight=0.0, transliterate=False),
             MatchFieldConfig(field='email', weight=0.1, transliterate=False)
         ]
     
@@ -183,8 +186,8 @@ def parse_match_fields(fields_str):
             try:
                 algorithm = getattr(FuzzyAlgorithm, algorithm_name)
             except AttributeError:
-                print(f"Предупреждение: неизвестный алгоритм '{algorithm_name}' для поля '{field}'. "
-                      f"Будет использован алгоритм по умолчанию.")
+                print(f"{Colors.YELLOW}Предупреждение: неизвестный алгоритм '{algorithm_name}' для поля '{field}'. "
+                      f"Будет использован алгоритм по умолчанию.{Colors.ENDC}")
         
         match_fields.append(MatchFieldConfig(
             field=field,
@@ -307,6 +310,29 @@ def main():
                       help="Вероятность перестановки символов (от 0 до 1, по умолчанию 0.1)")
     
     args = parser.parse_args()
+
+    # Создаем директории для данных, если они не существуют
+    os.makedirs(DATA_INPUT_DIR, exist_ok=True)
+    os.makedirs(DATA_OUTPUT_DIR, exist_ok=True)
+
+    # Создаем скрытые файлы в директориях, чтобы git не игнорировал пустые директории
+    if not os.listdir(DATA_INPUT_DIR):
+        with open(os.path.join(DATA_INPUT_DIR, '.gitkeep'), 'w') as f:
+            f.write('# Эта директория используется для хранения входных данных\n')
+
+    if not os.listdir(DATA_OUTPUT_DIR):
+        with open(os.path.join(DATA_OUTPUT_DIR, '.gitkeep'), 'w') as f:
+            f.write('# Эта директория используется для хранения результатов обработки\n')
+
+    # Если указаны пути для сохранения результатов, создаем директории
+    if args.output_matches:
+        os.makedirs(os.path.dirname(args.output_matches), exist_ok=True)
+    if args.output_path:
+        os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
+    if args.output_original:
+        os.makedirs(os.path.dirname(args.output_original), exist_ok=True)
+    if args.output_variant:
+        os.makedirs(os.path.dirname(args.output_variant), exist_ok=True)
 
     # Режим генерации тестовых данных
     if args.mode == 'generate':

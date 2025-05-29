@@ -68,7 +68,7 @@ def main():
                 print(f"{Colors.YELLOW}Пример 1: Сопоставление русскоязычных данных с русскоязычными полями{Colors.ENDC}")
                 print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/test_ru_ru_original.json --format1 json --input2 data/input/test_ru_ru_variant.json --format2 json --match-fields \"Фамилия:0.4:false:TOKEN_SORT,Имя:0.3:false:PARTIAL_RATIO,Отчество:0.2:false:RATIO,email:0.1:false:RATIO\" --threshold 0.7 --output-matches data/output/matches.json --output-path data/output/consolidated.json --transliteration-standard \"Passport\" --verbose{Colors.ENDC}", end="")
 
-                print(f"\n{Colors.YELLOW}Пример 2: Сопоставление англоязычных данных с англоязычными полями{Colors.ENDC}")
+                print(f"\n\n{Colors.YELLOW}Пример 2: Сопоставление англоязычных данных с англоязычными полями{Colors.ENDC}")
                 print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode match --input1 data/input/test_en_en_original.json --format1 json --input2 data/input/test_en_en_variant.json --format2 json --match-fields \"LastName:0.4:false:TOKEN_SORT,FirstName:0.3:false:PARTIAL_RATIO,MiddleName:0.2:false:RATIO,email:0.1:false:RATIO\" --threshold 0.7 --output-matches data/output/matches.json --output-path data/output/consolidated.json --transliteration-standard \"Passport\" --verbose{Colors.ENDC}", end="")
 
                 cmd = input(f"\n\n{Colors.YELLOW}Введите команду или нажмите {Colors.BOLD}Enter{Colors.ENDC}{Colors.YELLOW} для возврата в меню: {Colors.ENDC}")

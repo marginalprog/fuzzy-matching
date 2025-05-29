@@ -62,15 +62,20 @@ fuzzy_matching/
 
 ### Структура директорий данных
 
-Данные хранятся в стандартизированной структуре каталогов:
+Данные хранятся в стандартизированной структуре каталогов в корне проекта:
 
 ```
-data/
-├── input/    # Входные данные (оригинальные и вариантные наборы)
-└── output/   # Результаты обработки (совпадения и консолидированные данные)
+/fuzzy_matching/     # Корневая директория проекта
+    /data/          # Директория для данных
+        /input/     # Входящие файлы
+        /output/    # Результаты обработки
 ```
 
-При использовании CLI или API, файлы будут автоматически сохраняться в соответствующие каталоги.
+Важные замечания:
+- Все пути к файлам указываются относительно корня проекта
+- Входные файлы должны находиться в директории data/input
+- Результаты сохраняются в директорию data/output
+- При генерации тестовых данных файлы именуются по шаблону: test_[формат_полей]_[язык]_[тип].json
 
 ___
 
@@ -97,21 +102,21 @@ python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/inp
 
 ```bash
 python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --swap-char-probability 0.1 --generate-fields "id,Фамилия,Имя,Отчество,email" --language ru --field-names-format ru --verbose
-# Результат: test_ru_ru_original.json и test_ru_ru_variant.json
+# Результат: data/input/test_ru_ru_original.json и data/input/test_ru_ru_variant.json
 ```
 
 ##### Генерация данных на английском языке с английскими названиями полей
 
 ```bash
 python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --swap-char-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,email" --language en --field-names-format en --verbose
-# Результат: test_en_en_original.json и test_en_en_variant.json
+# Результат: data/input/test_en_en_original.json и data/input/test_en_en_variant.json
 ```
 
 ##### Генерация данных на русском языке с английскими названиями полей
 
 ```bash
 python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --swap-char-probability 0.1 --generate-fields "id,LastName,FirstName,MiddleName,email" --language ru --field-names-format en --verbose
-# Результат: test_en_ru_original.json и test_en_ru_variant.json
+# Результат: data/input/test_en_ru_original.json и data/input/test_en_ru_variant.json
 ```
 
 Вы можете контролировать, какие поля генерировать, с помощью параметра `--generate-fields`. 
