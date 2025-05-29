@@ -156,7 +156,6 @@ def main():
                 print(f"  {Colors.RED}--target-lang* {Colors.CYAN}[ru|en]{Colors.ENDC}             - целевой язык транслитерации")
                 print(f"  {Colors.RED}--transliterate-fields* {Colors.CYAN}[список]{Colors.ENDC}   - список полей для транслитерации")
                 print(f"  {Colors.GREEN}--transliteration-standard {Colors.CYAN}[стандарт]{Colors.ENDC} - стандарт транслитерации (GOST/Scientific/Passport, по умолчанию Passport)")
-                print(f"  {Colors.GREEN}--name-fields {Colors.CYAN}[список]{Colors.ENDC}             - маппинг полей для обратной транслитерации")
                 print(f"  {Colors.RED}--output-path* {Colors.CYAN}[путь]{Colors.ENDC}              - путь для сохранения результата")
                 print(f"  {Colors.GREEN}--verbose{Colors.ENDC}                          - показывает расширенные сведения о выполнении программы")
 
@@ -191,7 +190,7 @@ def main():
                 print(f"1. Транслитерация с русского на английский:")
                 print(f"   {Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_ru_ru_original.json --format1 json --target-lang en --output-path data/output/transliterated_en.json --transliterate-fields \"Фамилия,Имя,Отчество\" --transliteration-standard \"Passport\" --verbose{Colors.ENDC}", end="")
                 print(f"\n2. Обратная транслитерация с английского на русский:")
-                print(f"   {Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_en_en_original.json --format1 json --target-lang ru --transliteration-standard \"Passport\" --transliterate-fields \"LastName,FirstName,MiddleName\" --name-fields \"LastName:LastName,FirstName:FirstName,MiddleName:MiddleName,email:email\" --output-path data/output/transliterated_ru.json --verbose{Colors.ENDC}", end="")
+                print(f"   {Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_en_en_original.json --format1 json --target-lang ru --transliteration-standard \"Passport\" --transliterate-fields \"LastName,FirstName,MiddleName\" --output-path data/output/transliterated_ru.json --verbose{Colors.ENDC}", end="")
 
                 print(f"\n\n{Colors.RED}Сопоставление данных:{Colors.ENDC}")
                 print(f"1. Сопоставление персональных данных:")
@@ -280,7 +279,7 @@ def show_usage_examples():
     print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_ru_ru_original.json --format1 json --target-lang en --output-path data/output/transliterated_en.json --transliterate-fields \"Фамилия,Имя,Отчество\" --transliteration-standard \"Passport\" --verbose{Colors.ENDC}", end="")
     
     print(f"\n2. Обратная транслитерация с английского на русский:")
-    print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_en_en_original.json --format1 json --target-lang ru --transliteration-standard \"Passport\" --transliterate-fields \"LastName,FirstName,MiddleName\" --name-fields \"LastName:LastName,FirstName:FirstName,MiddleName:MiddleName,email:email\" --output-path data/output/transliterated_ru.json --verbose{Colors.ENDC}", end="")
+    print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/input/test_en_en_original.json --format1 json --target-lang ru --transliteration-standard \"GOST\" --transliterate-fields \"LastName,FirstName,MiddleName\" --name-fields \"LastName:LastName,FirstName:FirstName,MiddleName:MiddleName,email:email\" --output-path data/output/transliterated_ru.json --verbose{Colors.ENDC}", end="")
     
     print(f"\n\n{Colors.YELLOW}5. Генерация русских данных с русскими названиями полей:{Colors.ENDC}")
     print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --swap-char-probability 0.1 --generate-fields \"id,Фамилия,Имя,Отчество,email\" --language ru --field-names-format ru --verbose{Colors.ENDC}", end="")
