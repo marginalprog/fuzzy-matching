@@ -3,6 +3,12 @@
 Скрипт для сопоставления или транслитерации данных из CSV/JSON файлов.
 Запускается только через командную строку.
 
+Структура проекта:
+/fuzzy_matching/     # Корневая директория проекта
+    /data/          # Директория для данных
+        /input/     # Входящие файлы
+        /output/    # Результаты обработки
+
 Примеры использования:
 
 1. Сопоставление данных и поиск похожих записей:
@@ -19,25 +25,25 @@ python -m fuzzy_matching.cli.process_data --mode transliterate --input1 data/inp
 ```
 python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,Фамилия,Имя,Отчество,email" --language ru --field-names-format ru --verbose
 ```
-# Результат: test_ru_ru_original.json и test_ru_ru_variant.json
+# Результат: data/input/test_ru_ru_original.json и data/input/test_ru_ru_variant.json
 
 4. Генерация тестовых данных на русском языке с английскими названиями полей:
 ```
 python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language ru --field-names-format en --verbose
 ```
-# Результат: test_en_ru_original.json и test_en_ru_variant.json
+# Результат: data/input/test_en_ru_original.json и data/input/test_en_ru_variant.json
 
 5. Генерация тестовых данных на английском языке с английскими названиями полей:
 ```
 python -m fuzzy_matching.cli.process_data --mode generate --output-original data/input --output-variant data/input --output-format json --record-count 100 --double-char-probability 0.2 --change-char-probability 0.2 --change-name-probability 0.05 --change-domain-probability 0.1 --double-number-probability 0.2 --suffix-probability 0.05 --generate-fields "id,LastName,FirstName,MiddleName,email" --language en --field-names-format en --verbose
 ```
-# Результат: test_en_en_original.json и test_en_en_variant.json
+# Результат: data/input/test_en_en_original.json и data/input/test_en_en_variant.json
 
 Описание основных параметров:
   --mode: режим работы (match, transliterate или generate)
-  --input1, --input2: пути к входным файлам
+  --input1, --input2: пути к входным файлам (относительно корня проекта, например data/input/file.json)
   --format1, --format2: форматы входных файлов (csv или json)
-  --output-matches: путь для сохранения найденных совпадений
+  --output-matches: путь для сохранения найденных совпадений (относительно корня проекта)
   --output-path: путь для сохранения результатов (транслитерированных или консолидированных данных)
   --output-original: путь для сохранения оригинальных сгенерированных данных
   --output-variant: путь для сохранения искаженных сгенерированных данных
@@ -55,6 +61,12 @@ python -m fuzzy_matching.cli.process_data --mode generate --output-original data
   --double-number-probability: вероятность дублирования цифры в телефоне (от 0 до 1)
   --suffix-probability: вероятность добавления суффикса к ФИО (от 0 до 1)
   --swap-char-probability: вероятность перестановки символов (от 0 до 1, по умолчанию 0.1)
+
+Примечание:
+- Все пути к файлам указываются относительно корня проекта
+- Входные файлы должны находиться в директории data/input
+- Результаты сохраняются в директорию data/output
+- При генерации тестовых данных файлы именуются по шаблону: test_[формат_полей]_[язык]_[тип].json
 """
 
 import argparse
@@ -86,8 +98,28 @@ from fuzzy_matching.utils.cli_utils import generate_and_save_test_data
 from fuzzy_matching.utils.data_generator import DataGenerator, Language
 
 # Определение путей по умолчанию для файлов данных и результатов
-DATA_INPUT_DIR = 'data/input'
-DATA_OUTPUT_DIR = 'data/output'
+# Находим корневую директорию проекта (где находится setup.py или pyproject.toml)
+def find_project_root():
+    """
+    Находит корневую директорию проекта, поднимаясь вверх по дереву директорий,
+    пока не найдет setup.py или pyproject.toml
+    """
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    while current_dir != '/':
+        if os.path.exists(os.path.join(current_dir, 'setup.py')) or \
+           os.path.exists(os.path.join(current_dir, 'pyproject.toml')):
+            return current_dir
+        current_dir = os.path.dirname(current_dir)
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+PROJECT_ROOT = find_project_root()
+
+# Меняем текущую рабочую директорию на корневую директорию проекта
+os.chdir(PROJECT_ROOT)
+
+# Определяем пути относительно корня проекта
+DATA_INPUT_DIR = os.path.join(PROJECT_ROOT, 'data', 'input')
+DATA_OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'data', 'output')
 
 # Создаем директории, если они еще не существуют
 os.makedirs(DATA_INPUT_DIR, exist_ok=True)
@@ -102,18 +134,34 @@ if not os.listdir(DATA_OUTPUT_DIR):
     with open(os.path.join(DATA_OUTPUT_DIR, '.gitkeep'), 'w') as f:
         f.write('# Эта директория используется для хранения результатов обработки\n')
 
-def parse_name_fields(fields_str):
+def parse_name_fields(fields_str, match_fields=None):
     """
     Парсит строку с соответствием полей в формате 'source1:target1,source2:target2'
     и возвращает словарь соответствий.
+    
+    :param fields_str: строка с соответствием полей
+    :param match_fields: список MatchFieldConfig для определения имен полей
+    :return: словарь соответствий полей
     """
     if not fields_str:
+        # Если есть match_fields, используем их имена полей
+        if match_fields:
+            return {field.field: field.field for field in match_fields}
+        
+        # Определяем язык на основе наличия файлов
+        if os.path.exists(os.path.join(DATA_INPUT_DIR, 'test_en_en_original.json')):
+            return {
+                'id': 'id',
+                'LastName': 'LastName',
+                'FirstName': 'FirstName',
+                'MiddleName': 'MiddleName',
+                'email': 'email'
+            }
         return {
             'id': 'id',
             'Фамилия': 'Фамилия',
             'Имя': 'Имя',
             'Отчество': 'Отчество',
-            'email': 'email',
             'email': 'email',
             'Телефон': 'Телефон'
         }
@@ -137,10 +185,9 @@ def parse_match_fields(fields_str):
     :return: список объектов MatchFieldConfig
     """
     if not fields_str:
+        # Используем базовый набор полей по умолчанию
         return [
-            MatchFieldConfig(field='Фамилия', weight=0.4, transliterate=False),
-            MatchFieldConfig(field='Имя', weight=0.3, transliterate=False),
-            MatchFieldConfig(field='Отчество', weight=0.2, transliterate=False),
+            MatchFieldConfig(field='id', weight=0.0, transliterate=False),
             MatchFieldConfig(field='email', weight=0.1, transliterate=False)
         ]
     
@@ -159,8 +206,8 @@ def parse_match_fields(fields_str):
             try:
                 algorithm = getattr(FuzzyAlgorithm, algorithm_name)
             except AttributeError:
-                print(f"Предупреждение: неизвестный алгоритм '{algorithm_name}' для поля '{field}'. "
-                      f"Будет использован алгоритм по умолчанию.")
+                print(f"{Colors.YELLOW}Предупреждение: неизвестный алгоритм '{algorithm_name}' для поля '{field}'. "
+                      f"Будет использован алгоритм по умолчанию.{Colors.ENDC}")
         
         match_fields.append(MatchFieldConfig(
             field=field,
@@ -173,6 +220,12 @@ def parse_match_fields(fields_str):
 
 
 def main():
+    # Выводим информацию о путях в начале выполнения
+    # print(f"\nТекущая рабочая директория: {os.getcwd()}")
+    # print(f"Корневая директория проекта: {PROJECT_ROOT}")
+    # print(f"Директория для входных данных: {DATA_INPUT_DIR}")
+    # print(f"Директория для результатов: {DATA_OUTPUT_DIR}\n")
+
     parser = argparse.ArgumentParser(description="Сопоставление или транслитерация данных из файлов")
     
     # Общие параметры
@@ -283,6 +336,29 @@ def main():
                       help="Вероятность перестановки символов (от 0 до 1, по умолчанию 0.1)")
     
     args = parser.parse_args()
+
+    # Создаем директории для данных, если они не существуют
+    os.makedirs(DATA_INPUT_DIR, exist_ok=True)
+    os.makedirs(DATA_OUTPUT_DIR, exist_ok=True)
+
+    # Создаем скрытые файлы в директориях, чтобы git не игнорировал пустые директории
+    if not os.listdir(DATA_INPUT_DIR):
+        with open(os.path.join(DATA_INPUT_DIR, '.gitkeep'), 'w') as f:
+            f.write('# Эта директория используется для хранения входных данных\n')
+
+    if not os.listdir(DATA_OUTPUT_DIR):
+        with open(os.path.join(DATA_OUTPUT_DIR, '.gitkeep'), 'w') as f:
+            f.write('# Эта директория используется для хранения результатов обработки\n')
+
+    # Если указаны пути для сохранения результатов, создаем директории
+    if args.output_matches:
+        os.makedirs(os.path.dirname(args.output_matches), exist_ok=True)
+    if args.output_path:
+        os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
+    if args.output_original:
+        os.makedirs(os.path.dirname(args.output_original), exist_ok=True)
+    if args.output_variant:
+        os.makedirs(os.path.dirname(args.output_variant), exist_ok=True)
 
     # Режим генерации тестовых данных
     if args.mode == 'generate':
@@ -461,7 +537,7 @@ def main():
         return
     
     # Определяем соответствие полей
-    name_fields = parse_name_fields(args.name_fields)
+    name_fields = parse_name_fields(args.name_fields, parse_match_fields(args.match_fields))
     
     # Создаем конфигурацию полей для сопоставления
     match_fields = parse_match_fields(args.match_fields)
@@ -537,17 +613,59 @@ def main():
         if not args.target_lang:
             print(f"{Colors.RED}Ошибка: для режима транслитерации необходимо указать целевой язык (--target-lang){Colors.ENDC}")
             sys.exit(1)
+            
+        if not args.transliterate_fields:
+            print(f"{Colors.RED}Ошибка: необходимо указать поля для транслитерации (--transliterate-fields){Colors.ENDC}")
+            sys.exit(1)
         
         if args.verbose:
             print(f"{Colors.CYAN}Транслитерация данных из {args.input1} в {args.target_lang}...{Colors.ENDC}")
         
         # Определяем поля для транслитерации
-        fields_to_transliterate = []
-        if args.transliterate_fields:
-            fields_to_transliterate = [f.strip() for f in args.transliterate_fields.split(',')]
-        else:
-            # По умолчанию транслитерируем все текстовые поля
-            fields_to_transliterate = ['Фамилия', 'Имя', 'Отчество']
+        fields_to_transliterate = [f.strip() for f in args.transliterate_fields.split(',')]
+        
+        # Загружаем данные без маппинга полей
+        try:
+            if args.verbose:
+                print(f"{Colors.CYAN}Загрузка данных из {args.input1}...{Colors.ENDC}")
+            
+            data1 = None
+            if args.format1 == 'csv':
+                data1 = matcher.load_from_csv(args.input1, {})  # Пустой маппинг для сохранения оригинальных имен полей
+            else:
+                data1 = matcher.load_from_json(args.input1, None)  # None для сохранения оригинальных имен полей
+            
+            if args.verbose:
+                print(f"{Colors.GREEN}Загружено {len(data1)} записей из {args.input1}{Colors.ENDC}")
+        except Exception as e:
+            print(f"{Colors.RED}Ошибка при загрузке данных из {args.input1}: {str(e)}{Colors.ENDC}")
+            sys.exit(1)
+        
+        # Проверяем, что все указанные поля существуют в данных
+        if data1 and len(data1) > 0:
+            missing_fields = [field for field in fields_to_transliterate if field not in data1[0]]
+            if missing_fields:
+                print(f"{Colors.RED}Ошибка: следующие поля отсутствуют в данных: {', '.join(missing_fields)}{Colors.ENDC}")
+                print(f"{Colors.RED}Доступные поля: {', '.join(data1[0].keys())}{Colors.ENDC}")
+                sys.exit(1)
+        
+        # Обновляем конфигурацию для включения транслитерации
+        config.transliteration.enabled = True
+        config.transliteration.standard = args.transliteration_standard or "Passport"
+        
+        # Обновляем поля в конфигурации для транслитерации
+        config.fields = [
+            MatchFieldConfig(
+                field=field,
+                weight=1.0,
+                transliterate=True,
+                fuzzy_algorithm=FuzzyAlgorithm.TOKEN_SORT
+            )
+            for field in fields_to_transliterate
+        ]
+        
+        # Пересоздаем matcher с обновленной конфигурацией
+        matcher = DataMatcher(config=config)
         
         # Транслитерируем данные
         transliterated_data = matcher.transliterate_data(
@@ -556,53 +674,30 @@ def main():
             fields=fields_to_transliterate
         )
         
-        # Выводим первые 5 оригинальных и транслитерированных записей в виде таблицы
         if args.verbose:
-            print(f"\n{Colors.CYAN}Первые 5 оригинальных записей:{Colors.ENDC}")
+            print("\nПервые 5 оригинальных записей:")
+            table = PrettyTable()
+            table.field_names = ["№"] + fields_to_transliterate
             
-            # Создаем таблицу для оригинальных данных
-            orig_table = PrettyTable()
-            
-            # Добавляем заголовки
-            orig_table.field_names = ["№"] + fields_to_transliterate
-            
-            # Добавляем данные
-            for i, record in enumerate(data1[:5]):
-                row = [i + 1]  # Номер записи
+            for i, record in enumerate(data1[:5], 1):
+                row = [i]
                 for field in fields_to_transliterate:
                     row.append(record.get(field, ""))
-                orig_table.add_row(row)
+                table.add_row(row)
             
-            # Настраиваем стиль таблицы
-            orig_table.align = "l"  # Выравнивание по левому краю
-            orig_table.border = True
-            orig_table.header = True
+            print(table)
             
-            # Выводим таблицу
-            print(orig_table)
+            print("\nПервые 5 транслитерированных записей:")
+            table = PrettyTable()
+            table.field_names = ["№"] + fields_to_transliterate
             
-            print(f"\n{Colors.CYAN}Первые 5 транслитерированных записей:{Colors.ENDC}")
-            
-            # Создаем таблицу для транслитерированных данных
-            trans_table = PrettyTable()
-            
-            # Добавляем заголовки
-            trans_table.field_names = ["№"] + fields_to_transliterate
-            
-            # Добавляем данные
-            for i, record in enumerate(transliterated_data[:5]):
-                row = [i + 1]  # Номер записи
+            for i, record in enumerate(transliterated_data[:5], 1):
+                row = [i]
                 for field in fields_to_transliterate:
                     row.append(record.get(field, ""))
-                trans_table.add_row(row)
+                table.add_row(row)
             
-            # Настраиваем стиль таблицы
-            trans_table.align = "l"  # Выравнивание по левому краю
-            trans_table.border = True
-            trans_table.header = True
-            
-            # Выводим таблицу
-            print(trans_table)
+            print(table)
         
         # Используем путь по умолчанию, если путь не указан
         output_path = args.output_path or os.path.join(DATA_OUTPUT_DIR, f'transliterated.{args.output_format}')
@@ -791,6 +886,17 @@ def save_to_csv(data, filename):
         writer.writerows(data)
 
 if __name__ == "__main__":
+    # Проверяем, запущен ли скрипт как модуль
+    if not __package__:
+        print(f"{Colors.RED}Ошибка: Скрипт должен запускаться как модуль Python.{Colors.ENDC}")
+        print(f"{Colors.YELLOW}Правильный способ запуска:{Colors.ENDC}")
+        print(f"{Colors.GREEN}python -m fuzzy_matching.cli.process_data [аргументы]{Colors.ENDC}")
+        print(f"\n{Colors.YELLOW}В PyCharm:{Colors.ENDC}")
+        print("1. Run -> Edit Configurations")
+        print("2. Module name: fuzzy_matching.cli.process_data")
+        print("3. Working directory: корневая директория проекта")
+        sys.exit(1)
+    
     try:
         main()
     except Exception as e:

@@ -27,20 +27,10 @@ benchmark_results.csv
 /generate_reports.py
 
 # Генерируемые файлы и каталоги
-/data/*.json
-/data/*.csv
 /fuzzy_matching/results/*.json
 /fuzzy_matching/data/*.json
 /demo_data/
 /results/
-
-# Структурированные директории с данными
-/data/input/
-/data/output/
-/data/input/*.json
-/data/output/*.json
-/data/input/*.csv
-/data/output/*.csv
 
 # Тестовые файлы в корне проекта
 /test_original.json
@@ -63,7 +53,14 @@ htmlcov/
 .hypothesis/
 .pytype/
 
+# Сохраняем структуру директорий с данными
+/data/input/*
+/data/output/*
+!/data/input/.gitkeep
+!/data/output/.gitkeep
+
+# Игнорируем старые пути к данным
 fuzzy_matching/cli/data/input/*
 fuzzy_matching/cli/data/output/*
-!fuzzy_matching/cli/data/input/.getkeep
-!fuzzy_matching/cli/data/output/.getkeep
+!fuzzy_matching/cli/data/input/.gitkeep
+!fuzzy_matching/cli/data/output/.gitkeep

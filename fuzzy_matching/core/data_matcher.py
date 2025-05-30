@@ -98,12 +98,18 @@ class DataMatcher:
         records = []
         for obj in raw:
             record = {}
-            for orig_key, target_key in name_fields.items():
-                val = str(obj.get(orig_key, '')).strip()
-                if target_key in record and record[target_key]:
-                    record[target_key] = f"{record[target_key]} {val}"
-                else:
-                    record[target_key] = val
+            if name_fields:
+                # Если указан маппинг полей, используем его
+                for orig_key, target_key in name_fields.items():
+                    val = str(obj.get(orig_key, '')).strip()
+                    if target_key in record and record[target_key]:
+                        record[target_key] = f"{record[target_key]} {val}"
+                    else:
+                        record[target_key] = val
+            else:
+                # Если маппинг не указан, используем оригинальные имена полей
+                for key, val in obj.items():
+                    record[key] = str(val).strip()
             records.append(record)
         return records
 
@@ -415,8 +421,8 @@ class DataMatcher:
         consolidated = []
         
         # Копируем данные, чтобы не изменять оригиналы
-        data1 = data1.copy()
-        data2 = data2.copy()
+        data1 = [record.copy() for record in data1]
+        data2 = [record.copy() for record in data2]
         
         # Сортируем данные, если это указано в конфигурации
         if self.sort_before_match:
@@ -438,34 +444,57 @@ class DataMatcher:
             # Если блокировка не используется, обрабатываем все данные как один блок
             matches.extend(self.process_block(data1, data2))
         
-        # Консолидируем данные
-        if matches:
-            # Создаем множество сопоставленных записей для быстрого поиска
-            matched_ids1 = set(match["Оригинал"].get("id", "") for match in matches)
-            matched_ids2 = set(match["Вариант"].get("id", "") for match in matches)
+        # Создаем множества для отслеживания использованных записей
+        used_records1 = set()
+        used_records2 = set()
+        
+        # Обрабатываем совпадения с высокой схожестью
+        high_similarity_matches = []
+        low_similarity_matches = []
+        
+        # Разделяем совпадения на группы по схожести
+        for match in matches:
+            if match["Схожесть"] >= self.threshold:
+                high_similarity_matches.append(match)
+            else:
+                low_similarity_matches.append(match)
+        
+        # Обрабатываем совпадения с высокой схожестью
+        for match in high_similarity_matches:
+            record1 = match["Оригинал"]
+            record2 = match["Вариант"]
             
-            # Добавляем сопоставленные записи
-            for match in matches:
-                record1 = match["Оригинал"]
-                record2 = match["Вариант"]
-                
-                if record1 and record2:
-                    # Выбираем "лучшую" запись для консолидации
-                    consolidated_record = self.select_cleaner_record(record1, record2)
-                    consolidated.append(consolidated_record)
+            # Выбираем "лучшую" запись для консолидации
+            consolidated_record = self.select_cleaner_record(record1, record2)
+            consolidated.append(consolidated_record)
             
-            # Добавляем несопоставленные записи из первого набора
-            for record in data1:
-                if record.get("id", "") not in matched_ids1:
-                    consolidated.append(record.copy())
+            # Отмечаем записи как использованные
+            used_records1.add(id(record1))
+            used_records2.add(id(record2))
+        
+        # Для совпадений с низкой схожестью сохраняем обе записи
+        for match in low_similarity_matches:
+            record1 = match["Оригинал"]
+            record2 = match["Вариант"]
             
-            # Добавляем несопоставленные записи из второго набора
-            for record in data2:
-                if record.get("id", "") not in matched_ids2:
-                    consolidated.append(record.copy())
-        else:
-            # Если совпадений нет - объединяем оба набора
-            consolidated = data1 + data2
+            # Добавляем обе записи, если они еще не были использованы
+            if id(record1) not in used_records1:
+                consolidated.append(record1.copy())
+                used_records1.add(id(record1))
+            if id(record2) not in used_records2:
+                consolidated.append(record2.copy())
+                used_records2.add(id(record2))
+        
+        # Добавляем оставшиеся несопоставленные записи из обоих наборов
+        for record in data1:
+            if id(record) not in used_records1:
+                consolidated.append(record.copy())
+                used_records1.add(id(record))
+        
+        for record in data2:
+            if id(record) not in used_records2:
+                consolidated.append(record.copy())
+                used_records2.add(id(record))
         
         return matches, consolidated
     
@@ -486,32 +515,33 @@ class DataMatcher:
         
         result = []
         for item in data_list:
-            new_item = item.copy()
+            new_item = item.copy()  # Копируем все поля из оригинальной записи
             for field in fields:
                 if field in item and item[field]:
-                    source_value = item[field]
+                    source_value = str(item[field])  # Преобразуем в строку для безопасности
                     lang = translit.detect_language(source_value)
                     
-                    # Если язык не определен, пробуем использовать целевой язык
-                    if lang is None:
-                        if target_lang == 'en':
-                            # Предполагаем, что это русский текст
-                            new_item[field] = translit.transliterate_ru_to_en(
-                                source_value, self.transliteration_standard
-                            )
-                        elif target_lang == 'ru':
-                            # Предполагаем, что это английский текст
-                            new_item[field] = translit.transliterate_en_to_ru(
-                                source_value, self.transliteration_standard
-                            )
-                    elif lang == 'ru' and target_lang == 'en':
-                        new_item[field] = translit.transliterate_ru_to_en(
+                    # Если язык не определен или совпадает с целевым, пропускаем
+                    if lang == target_lang:
+                        continue
+                        
+                    # Транслитерируем в зависимости от языка источника и цели
+                    if (lang == 'ru' and target_lang == 'en') or (lang is None and target_lang == 'en'):
+                        transliterated = translit.transliterate_ru_to_en(
                             source_value, self.transliteration_standard
                         )
-                    elif lang == 'en' and target_lang == 'ru':
-                        new_item[field] = translit.transliterate_en_to_ru(
+                    elif (lang == 'en' and target_lang == 'ru') or (lang is None and target_lang == 'ru'):
+                        transliterated = translit.transliterate_en_to_ru(
                             source_value, self.transliteration_standard
                         )
+                    else:
+                        transliterated = source_value
+                    
+                    # Сохраняем оригинальный регистр первой буквы
+                    if source_value and source_value[0].isupper():
+                        transliterated = transliterated.capitalize()
+                    
+                    new_item[field] = transliterated
             result.append(new_item)
         
         return result
