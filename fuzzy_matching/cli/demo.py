@@ -667,26 +667,64 @@ def run_transliteration_demo():
     # Показываем примеры обратной транслитерации
     print(f"\n{Colors.YELLOW}Примеры обратной транслитерации (с английского на русский):{Colors.ENDC}")
     
-    english_names = [
-        "Ivanov Ivan Ivanovich",
-        "Petrov Petr Petrovich",
-        "Shcherbakov Evgeniy Aleksandrovich"
-    ]
+    # Берем те же русские имена и транслитерируем их по каждому стандарту
+    gost_names = []
+    scientific_names = []
+    passport_names = []
+    
+    for record in test_data:
+        full_name = f"{record['Фамилия']} {record['Имя']} {record['Отчество']}"
+        gost_names.append({
+            'id': record['id'],
+            'last_name': transliterate_ru_to_en(record['Фамилия'], GOST_STANDARD),
+            'first_name': transliterate_ru_to_en(record['Имя'], GOST_STANDARD),
+            'middle_name': transliterate_ru_to_en(record['Отчество'], GOST_STANDARD)
+        })
+        scientific_names.append({
+            'id': record['id'],
+            'last_name': transliterate_ru_to_en(record['Фамилия'], SCIENTIFIC_STANDARD),
+            'first_name': transliterate_ru_to_en(record['Имя'], SCIENTIFIC_STANDARD),
+            'middle_name': transliterate_ru_to_en(record['Отчество'], SCIENTIFIC_STANDARD)
+        })
+        passport_names.append({
+            'id': record['id'],
+            'last_name': transliterate_ru_to_en(record['Фамилия'], PASSPORT_STANDARD),
+            'first_name': transliterate_ru_to_en(record['Имя'], PASSPORT_STANDARD),
+            'middle_name': transliterate_ru_to_en(record['Отчество'], PASSPORT_STANDARD)
+        })
     
     # Создаем таблицу для обратной транслитерации
     back_table = PrettyTable()
-    back_table.field_names = ["№", "Английский вариант", "Русский вариант"]
+    back_table.field_names = ["№", "Фамилия", "Имя", "Отчество", "ГОСТ", "Научный", "Паспортный"]
     
-    for i, name in enumerate(english_names):
-        russian = transliterate_en_to_ru(name, PASSPORT_STANDARD)
-        back_table.add_row([i+1, name, russian])
+    for i in range(len(test_data)):
+        # Получаем транслитерированные варианты
+        gost_full = f"{gost_names[i]['last_name']} {gost_names[i]['first_name']} {gost_names[i]['middle_name']}"
+        scientific_full = f"{scientific_names[i]['last_name']} {scientific_names[i]['first_name']} {scientific_names[i]['middle_name']}"
+        passport_full = f"{passport_names[i]['last_name']} {passport_names[i]['first_name']} {passport_names[i]['middle_name']}"
+        
+        # Выполняем обратную транслитерацию
+        gost_back = transliterate_en_to_ru(gost_full, GOST_STANDARD)
+        scientific_back = transliterate_en_to_ru(scientific_full, SCIENTIFIC_STANDARD)
+        passport_back = transliterate_en_to_ru(passport_full, PASSPORT_STANDARD)
+        
+        # Добавляем строку в таблицу
+        back_table.add_row([
+            i+1,
+            passport_names[i]['last_name'],  # Используем паспортную версию для отображения
+            passport_names[i]['first_name'],
+            passport_names[i]['middle_name'],
+            gost_back,
+            scientific_back,
+            passport_back
+        ])
     
     # Настраиваем стиль таблицы
     back_table.align = "l"
     back_table.border = True
     back_table.header = True
     
-    print("\nРезультаты обратной транслитерации (Passport):")
+    print("\nРезультаты обратной транслитерации по разным стандартам:")
     print(back_table)
     
     # Демонстрация автоопределения языка
