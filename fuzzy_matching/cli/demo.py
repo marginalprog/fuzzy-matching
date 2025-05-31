@@ -686,7 +686,7 @@ def run_transliteration_demo():
     back_table.border = True
     back_table.header = True
     
-    print("\nРезультаты обратной транслитерации:")
+    print("\nРезультаты обратной транслитерации (Passport):")
     print(back_table)
     
     # Демонстрация автоопределения языка
