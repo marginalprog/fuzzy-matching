@@ -640,7 +640,7 @@ def run_transliteration_demo():
     
     # Создаем таблицу для вывода результатов
     table = PrettyTable()
-    table.field_names = ["№", "Фамилия", "Имя", "Отчество", "ГОСТ", "Научный", "Паспортный"]
+    table.field_names = ["№", "Фамилия", "Имя", "Отчество", "ГОСТ-А", "Паспортный"]
     
     for i, record in enumerate(test_data):
         # Получаем ФИО
@@ -651,11 +651,12 @@ def run_transliteration_demo():
         
         # Транслитерация по разным стандартам
         gost = transliterate_ru_to_en(full_name, GOST_STANDARD)
-        scientific = transliterate_ru_to_en(full_name, SCIENTIFIC_STANDARD)
+        # scientific = transliterate_ru_to_en(full_name, SCIENTIFIC_STANDARD)
         passport = transliterate_ru_to_en(full_name, PASSPORT_STANDARD)
         
-        table.add_row([i+1, last_name, first_name, middle_name, gost, scientific, passport])
-    
+        table.add_row([i+1, last_name, first_name, middle_name, gost, passport])
+        # + scientific
+
     # Настраиваем стиль таблицы
     table.align = "l"
     table.border = True
@@ -669,7 +670,7 @@ def run_transliteration_demo():
     
     # Берем те же русские имена и транслитерируем их по каждому стандарту
     gost_names = []
-    scientific_names = []
+    # scientific_names = []
     passport_names = []
     
     for record in test_data:
@@ -680,12 +681,12 @@ def run_transliteration_demo():
             'first_name': transliterate_ru_to_en(record['Имя'], GOST_STANDARD),
             'middle_name': transliterate_ru_to_en(record['Отчество'], GOST_STANDARD)
         })
-        scientific_names.append({
-            'id': record['id'],
-            'last_name': transliterate_ru_to_en(record['Фамилия'], SCIENTIFIC_STANDARD),
-            'first_name': transliterate_ru_to_en(record['Имя'], SCIENTIFIC_STANDARD),
-            'middle_name': transliterate_ru_to_en(record['Отчество'], SCIENTIFIC_STANDARD)
-        })
+        # scientific_names.append({
+        #     'id': record['id'],
+        #     'last_name': transliterate_ru_to_en(record['Фамилия'], SCIENTIFIC_STANDARD),
+        #     'first_name': transliterate_ru_to_en(record['Имя'], SCIENTIFIC_STANDARD),
+        #     'middle_name': transliterate_ru_to_en(record['Отчество'], SCIENTIFIC_STANDARD)
+        # })
         passport_names.append({
             'id': record['id'],
             'last_name': transliterate_ru_to_en(record['Фамилия'], PASSPORT_STANDARD),
@@ -695,17 +696,18 @@ def run_transliteration_demo():
     
     # Создаем таблицу для обратной транслитерации
     back_table = PrettyTable()
-    back_table.field_names = ["№", "Фамилия", "Имя", "Отчество", "ГОСТ", "Научный", "Паспортный"]
-    
+    back_table.field_names = ["№", "Фамилия", "Имя", "Отчество", "ГОСТ-А", "Паспортный"]
+    # + Научный
+
     for i in range(len(test_data)):
         # Получаем транслитерированные варианты
         gost_full = f"{gost_names[i]['last_name']} {gost_names[i]['first_name']} {gost_names[i]['middle_name']}"
-        scientific_full = f"{scientific_names[i]['last_name']} {scientific_names[i]['first_name']} {scientific_names[i]['middle_name']}"
+        # scientific_full = f"{scientific_names[i]['last_name']} {scientific_names[i]['first_name']} {scientific_names[i]['middle_name']}"
         passport_full = f"{passport_names[i]['last_name']} {passport_names[i]['first_name']} {passport_names[i]['middle_name']}"
         
         # Выполняем обратную транслитерацию
         gost_back = transliterate_en_to_ru(gost_full, GOST_STANDARD)
-        scientific_back = transliterate_en_to_ru(scientific_full, SCIENTIFIC_STANDARD)
+        # scientific_back = transliterate_en_to_ru(scientific_full, SCIENTIFIC_STANDARD)
         passport_back = transliterate_en_to_ru(passport_full, PASSPORT_STANDARD)
         
         # Добавляем строку в таблицу
@@ -715,7 +717,7 @@ def run_transliteration_demo():
             passport_names[i]['first_name'],
             passport_names[i]['middle_name'],
             gost_back,
-            scientific_back,
+            # scientific_back,
             passport_back
         ])
     

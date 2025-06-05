@@ -155,7 +155,7 @@ def main():
                 print(f"  {Colors.RED}--format1* {Colors.CYAN}[json|csv]{Colors.ENDC}              - формат входного файла")
                 print(f"  {Colors.RED}--target-lang* {Colors.CYAN}[ru|en]{Colors.ENDC}             - целевой язык транслитерации")
                 print(f"  {Colors.RED}--transliterate-fields* {Colors.CYAN}[список]{Colors.ENDC}   - список полей для транслитерации")
-                print(f"  {Colors.GREEN}--transliteration-standard {Colors.CYAN}[стандарт]{Colors.ENDC} - стандарт транслитерации (GOST/Scientific/Passport, по умолчанию Passport)")
+                print(f"  {Colors.GREEN}--transliteration-standard {Colors.CYAN}[стандарт]{Colors.ENDC} - стандарт транслитерации (GOST/Passport, по умолчанию Passport)")
                 print(f"  {Colors.RED}--output-path* {Colors.CYAN}[путь]{Colors.ENDC}              - путь для сохранения результата")
                 print(f"  {Colors.GREEN}--verbose{Colors.ENDC}                          - показывает расширенные сведения о выполнении программы")
 
@@ -174,7 +174,7 @@ def main():
                 print(f"        - {Colors.GREEN}алгоритм{Colors.ENDC}: {Colors.CYAN}RATIO/PARTIAL_RATIO/TOKEN_SORT/TOKEN_SET/WRatio{Colors.ENDC}  (по умолчанию TOKEN_SORT)")
                 print(f"        Пример: {Colors.CYAN}\"Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:false:PARTIAL_RATIO\"{Colors.ENDC}")
                 print(f"  {Colors.GREEN}--threshold {Colors.CYAN}[0-1]{Colors.ENDC}                  - порог совпадения (по умолчанию 0.7)")
-                print(f"  {Colors.GREEN}--transliteration-standard {Colors.CYAN}[стандарт]{Colors.ENDC} - стандарт транслитерации (GOST/Scientific/Passport, по умолчанию Passport)")
+                print(f"  {Colors.GREEN}--transliteration-standard {Colors.CYAN}[стандарт]{Colors.ENDC} - стандарт транслитерации (GOST/Passport, по умолчанию Passport)")
                 print(f"  {Colors.RED}--output-matches* {Colors.CYAN}[путь]{Colors.ENDC}           - путь для сохранения совпадений")
                 print(f"  {Colors.RED}--output-path* {Colors.CYAN}[путь]{Colors.ENDC}              - путь для сохранения консолидированных данных")
                 print(f"  {Colors.GREEN}--verbose{Colors.ENDC}                          - показывает расширенные сведения о выполнении программы")
