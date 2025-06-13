@@ -174,6 +174,7 @@ def main():
                 print(f"        - {Colors.GREEN}алгоритм{Colors.ENDC}: {Colors.CYAN}RATIO/PARTIAL_RATIO/TOKEN_SORT/TOKEN_SET/WRatio{Colors.ENDC}  (по умолчанию TOKEN_SORT)")
                 print(f"        Пример: {Colors.CYAN}\"Фамилия:0.4:true:TOKEN_SORT,Имя:0.3:false:PARTIAL_RATIO\"{Colors.ENDC}")
                 print(f"  {Colors.GREEN}--threshold {Colors.CYAN}[0-1]{Colors.ENDC}                  - порог совпадения (по умолчанию 0.7)")
+                print(f"  {Colors.GREEN}--block-field {Colors.CYAN}[поле]{Colors.ENDC}               - поле для блокировки (ускоряет сопоставление)")
                 print(f"  {Colors.GREEN}--transliteration-standard {Colors.CYAN}[стандарт]{Colors.ENDC} - стандарт транслитерации (GOST/Passport, по умолчанию Passport)")
                 print(f"  {Colors.RED}--output-matches* {Colors.CYAN}[путь]{Colors.ENDC}           - путь для сохранения совпадений")
                 print(f"  {Colors.RED}--output-path* {Colors.CYAN}[путь]{Colors.ENDC}              - путь для сохранения консолидированных данных")
